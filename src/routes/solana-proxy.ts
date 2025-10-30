@@ -37,10 +37,15 @@ export async function proxySolanaRPC(req: Request, res: Response) {
       'getTransaction',
       'getSignatureStatuses',
       'simulateTransaction',
+      'sendTransaction',
+      'sendRawTransaction',
+      'confirmTransaction',
       'getRecentBlockhash',
       'getMinimumBalanceForRentExemption',
       'getTokenAccountsByOwner',
       'getProgramAccounts',
+      'getConfirmedTransaction',
+      'getFeeForMessage',
     ];
 
     if (!allowedMethods.includes(method)) {

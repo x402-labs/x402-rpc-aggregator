@@ -102,7 +102,7 @@ export class X402Agent {
       });
 
       console.log(`📤 Transaction sent via Helius: ${signature}`);
-      console.log(`🔗 Explorer: https://solscan.io/tx/${signature}`);
+      console.log(`🔗 Explorer: https://orb.helius.dev/tx/${signature}`);
 
       // Confirm transaction via backend's Helius RPC
       const confirmation = await this.connection.confirmTransaction({

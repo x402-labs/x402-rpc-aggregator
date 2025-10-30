@@ -41,7 +41,21 @@ import path from 'path';
 
 // Initialize Express app
 const app = express();
-app.use(cors());
+
+// CORS configuration - allow frontend domains
+app.use(cors({
+  origin: [
+    'https://x402labs.cloud',
+    'https://www.x402labs.cloud',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x402-payment', 'x402-batch'],
+}));
+
 app.use(express.json());
 
 // Serve static assets (logo, favicon, etc.)
@@ -124,6 +138,9 @@ app.get('/facilitator', (req: Request, res: Response) => {
 // ========================================
 // SOLANA RPC PROXY (Secure - API Key on Server)
 // ========================================
+app.options('/solana-rpc', (req, res) => {
+  res.status(200).end();
+});
 app.post('/solana-rpc', proxySolanaRPC);
 
 // ========================================
@@ -253,7 +270,7 @@ app.post('/rpc', x402Middleware, async (req: any, res: Response) => {
             timestamp: new Date().toISOString(),
             explorer: req.x402?.txHash 
               ? (chain === 'solana'
-                ? `https://solscan.io/tx/${req.x402.txHash}`
+                ? `https://orb.helius.dev/tx/${req.x402.txHash}`
                 : `https://basescan.org/tx/${req.x402.txHash}`)
               : '',
           },

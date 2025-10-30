@@ -219,13 +219,13 @@
     // Auto-detect API URL
     const BASE_URL = window.location.hostname === 'localhost' 
       ? 'http://localhost:3000'
-      : 'https://x402labs.cloud';
+      : window.location.origin;
     
     const API = `${BASE_URL}/rpc`;
     const SOLANA_RPC_PROXY = `${BASE_URL}/solana-rpc`;  // Secure proxy
     
     console.log('Using x402 RPC API:', API);
-    console.log('Using Solana RPC proxy (secure)');
+    console.log('Using Solana RPC proxy (secure):', SOLANA_RPC_PROXY);
     const log = (msg) => {
       const el = document.createElement('div');
       el.innerHTML = `<span class="timestamp">[${new Date().toISOString().slice(11,19)}]</span> ${msg}`;

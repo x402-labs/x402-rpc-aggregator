@@ -178,7 +178,7 @@ x402-payment: {"paymentPayload": {...}, "paymentRequirements": {...}}
       "chain": "solana",
       "txHash": "5x...",
       "amount": 0.0001,
-      "explorer": "https://solscan.io/tx/5x..."
+      "explorer": "https://orb.helius.dev/tx/5x..."
     },
     "cost": 0.0001,
     "status": "settled"
