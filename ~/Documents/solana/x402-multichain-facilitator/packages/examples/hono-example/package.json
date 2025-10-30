@@ -1,0 +1,23 @@
+{
+  "name": "@x402-multichain/example-hono",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hono example for @x402-multichain/facilitator",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@x402-multichain/facilitator": "*",
+    "hono": "^4.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5",
+    "bun-types": "latest"
+  }
+}
+

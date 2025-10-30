@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <!-- SEO Meta Tags -->
+  <title>x402 Labs | Micropayments for the Machine Economy™</title>
+  <meta name="description" content="Intelligent RPC aggregator with x402 micropayments. Access Solana, Ethereum, and Base RPC providers with no API keys or subscriptions. Perfect for AI agents and autonomous systems." />
+  <meta name="keywords" content="x402, RPC, Solana, Ethereum, Base, AI agents, micropayments, blockchain, DeFi, web3, x402 Labs" />
+  <meta name="author" content="x402-labs" />
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="x402 Labs | Micropayments for the Machine Economy™" />
+  <meta property="og:description" content="Intelligent RPC aggregator with x402 micropayments. No API keys, no subscriptions." />
+  <meta property="og:url" content="https://x402-rpc-aggregator.up.railway.app" />
+  <meta property="og:image" content="https://x402-rpc-aggregator.up.railway.app/assets/FullLogo_Transparent.png" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="x402 Labs | Micropayments for the Machine Economy™" />
+  <meta name="twitter:description" content="Pay-per-call RPC access for AI agents" />
+  <meta name="twitter:image" content="https://x402-rpc-aggregator.up.railway.app/assets/FullLogo_Transparent.png" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/assets/FullLogo_Transparent.png" />
+  
+  <!-- Styles -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #DFEFFB 0%, #E8F4F8 100%);
+      color: #0E4D81;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    /* Header */
+    header {
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .logo span {
+      color: #177CCF;
+    }
+    
+    nav {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+    
+    nav a {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    
+    nav a:hover {
+      color: #177CCF;
+      background: rgba(23, 124, 207, 0.1);
+    }
+    
+    .cta-button {
+      background: linear-gradient(135deg, #177CCF 0%, #0E4D81 100%);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 14px rgba(23, 124, 207, 0.3);
+    }
+    
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(23, 124, 207, 0.5);
+    }
+    
+    /* Hero Section */
+    .hero {
+      max-width: 1400px;
+      margin: 4rem auto;
+      padding: 0 2rem;
+      text-align: center;
+    }
+    
+    .hero h1 {
+      font-size: 4rem;
+      font-weight: 800;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #f1f5f9 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+    
+    .hero .subtitle {
+      font-size: 1.5rem;
+      color: #cbd5e1;
+      margin-bottom: 3rem;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .hero-ctas {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 4rem;
+    }
+    
+    .primary-button {
+      background: linear-gradient(135deg, #177CCF 0%, #0E4D81 100%);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.125rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: inline-block;
+      box-shadow: 0 10px 25px rgba(23, 124, 207, 0.3);
+    }
+    
+    .primary-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(23, 124, 207, 0.5);
+    }
+    
+    .secondary-button {
+      background: white;
+      color: #177CCF;
+      padding: 1rem 2rem;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.125rem;
+      border: 2px solid #177CCF;
+      transition: all 0.2s;
+      display: inline-block;
+    }
+    
+    .secondary-button:hover {
+      background: rgba(23, 124, 207, 0.1);
+      border-color: #0E4D81;
+    }
+    
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      max-width: 1000px;
+      margin: 0 auto 6rem;
+      padding: 0 2rem;
+    }
+    
+    .stat {
+      text-align: center;
+      padding: 1.5rem;
+      background: rgba(139, 92, 246, 0.05);
+      border-radius: 1rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #a78bfa;
+      display: block;
+    }
+    
+    .stat-label {
+      color: #cbd5e1;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    
+    /* Features */
+    .features {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+    }
+    
+    .section-title {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 3rem;
+    }
+    
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+    }
+    
+    .feature-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 1rem;
+      padding: 2rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      transition: all 0.3s;
+      position: relative;
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    
+    .feature-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    .feature-badge.coming-soon {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .feature-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    .feature-description {
+      color: #cbd5e1;
+      margin-bottom: 1.5rem;
+    }
+    
+    .feature-link {
+      color: #a78bfa;
+      text-decoration: none;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .feature-link:hover {
+      color: #8b5cf6;
+    }
+    
+    /* Ecosystem */
+    .ecosystem {
+      max-width: 1400px;
+      margin: 6rem auto;
+      padding: 4rem 2rem;
+      text-align: center;
+    }
+    
+    .providers {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    
+    .provider-logo {
+      padding: 1rem 2rem;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      color: #cbd5e1;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+    
+    .provider-logo:hover {
+      border-color: rgba(139, 92, 246, 0.3);
+      transform: translateY(-3px);
+    }
+    
+    /* Terminal Demo */
+    .terminal-demo {
+      max-width: 800px;
+      margin: 6rem auto;
+      padding: 0 2rem;
+    }
+    
+    .terminal {
+      background: #1e293b;
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .terminal-header {
+      background: #0f172a;
+      padding: 0.75rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+    
+    .terminal-dot:nth-child(2) { background: #f59e0b; }
+    .terminal-dot:nth-child(3) { background: #10b981; }
+    
+    .terminal-body {
+      padding: 2rem;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.8;
+    }
+    
+    .terminal-prompt {
+      color: #10b981;
+    }
+    
+    .terminal-command {
+      color: #cbd5e1;
+    }
+    
+    .terminal-output {
+      color: #94a3b8;
+      margin-left: 1rem;
+    }
+    
+    .terminal-success {
+      color: #10b981;
+    }
+    
+    /* Footer */
+    footer {
+      max-width: 1400px;
+      margin: 6rem auto 0;
+      padding: 3rem 2rem;
+      border-top: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .footer-content {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 2rem;
+    }
+    
+    .footer-section h3 {
+      margin-bottom: 1rem;
+      font-size: 1.125rem;
+    }
+    
+    .footer-section ul {
+      list-style: none;
+    }
+    
+    .footer-section li {
+      margin-bottom: 0.75rem;
+    }
+    
+    .footer-section a {
+      color: #cbd5e1;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    
+    .footer-section a:hover {
+      color: #a78bfa;
+    }
+    
+    .footer-bottom {
+      padding-top: 2rem;
+      border-top: 1px solid rgba(139, 92, 246, 0.1);
+      text-align: center;
+      color: #64748b;
+    }
+    
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+      
+      .hero .subtitle {
+        font-size: 1.125rem;
+      }
+      
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .footer-content {
+        grid-template-columns: 1fr;
+      }
+      
+      nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <img src="/assets/FullLogo_Transparent.png" alt="x402 Labs" style="height: 60px; width: auto;">
+    </div>
+      <nav>
+      <a href="/api-docs">API Docs</a>
+      <a href="/providers-ui">Providers</a>
+      <a href="https://github.com/x402-labs" target="_blank">GitHub</a>
+      <a href="/demo" class="cta-button">Try Demo</a>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div style="display: inline-block; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); padding: 8px 20px; border-radius: 20px; margin-bottom: 24px; font-size: 0.875rem; color: #a78bfa;">
+      🤖 Infrastructure for Autonomous AI Agents
+    </div>
+    
+    <h1 style="font-size: 3.5rem; line-height: 1.2; margin-bottom: 1.5rem;">
+      <span class="gradient-text">Micropayments for the</span><br/>
+      <span class="gradient-text">Machine Economy™</span>
+    </h1>
+    
+    <p class="subtitle" style="font-size: 1.25rem; max-width: 800px; margin: 0 auto 1rem; line-height: 1.6;">
+      <strong>AI agents can't access blockchain data without human-managed API keys.</strong><br/>
+      We solved this with <span style="color: #60a5fa;">autonomous micropayments</span>.
+    </p>
+    
+    <p style="font-size: 1.125rem; max-width: 700px; margin: 0 auto 2.5rem; color: #94a3b8;">
+      No API keys • No subscriptions • No human intervention<br/>
+      <span style="color: #60a5fa;">$0.0001 per RPC call</span> • Solana, Ethereum, Base
+    </p>
+    
+    <div class="hero-ctas">
+      <a href="/demo" class="primary-button" style="font-size: 1.125rem; padding: 16px 32px;">🚀 Try Live Demo</a>
+      <a href="/agent" class="secondary-button" style="font-size: 1.125rem; padding: 16px 32px;">🤖 AI Agent Demo</a>
+    </div>
+    
+    <div class="stats" style="margin-top: 4rem;">
+      <div class="stat">
+        <span class="stat-value" style="color: #22c55e;">$0.0001</span>
+        <span class="stat-label">Price per Call</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">8+</span>
+        <span class="stat-label">RPC Providers</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">&lt;3s</span>
+        <span class="stat-label">Settlement Time</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">99.9%</span>
+        <span class="stat-label">Uptime</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem/Solution -->
+  <section style="max-width: 1200px; margin: 6rem auto; padding: 0 2rem;">
+    <div style="text-align: center; margin-bottom: 4rem;">
+      <h2 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">
+        <span class="gradient-text">The Problem with Traditional RPC</span>
+      </h2>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start;">
+      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 2rem;">
+        <h3 style="font-size: 1.5rem; font-weight: 600; color: #f87171; margin-bottom: 1.5rem;">❌ Traditional RPC</h3>
+        <ul style="space-y: 1rem; color: #cbd5e1; font-size: 1.125rem;">
+          <li style="margin-bottom: 1rem;">👤 Requires human to sign up</li>
+          <li style="margin-bottom: 1rem;">🔑 Manage API keys manually</li>
+          <li style="margin-bottom: 1rem;">💳 Monthly subscription fees</li>
+          <li style="margin-bottom: 1rem;">🔒 Vendor lock-in</li>
+          <li style="margin-bottom: 1rem;">⏱️ Single point of failure</li>
+          <li style="margin-bottom: 1rem;">🤷 Can't automate for AI agents</li>
+        </ul>
+      </div>
+      
+      <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 2rem;">
+        <h3 style="font-size: 1.5rem; font-weight: 600; color: #22c55e; margin-bottom: 1.5rem;">✅ x402 RPC Aggregator</h3>
+        <ul style="space-y: 1rem; color: #cbd5e1; font-size: 1.125rem;">
+          <li style="margin-bottom: 1rem;">🤖 <strong>Fully autonomous</strong> - No human needed</li>
+          <li style="margin-bottom: 1rem;">⚡ <strong>Micropayments</strong> - Pay per call ($0.0001+)</li>
+          <li style="margin-bottom: 1rem;">💰 <strong>Pay only for what you use</strong></li>
+          <li style="margin-bottom: 1rem;">🌐 <strong>Multi-provider</strong> - 8+ with auto-failover</li>
+          <li style="margin-bottom: 1rem;">🎯 <strong>99.9% uptime</strong> - Intelligent routing</li>
+          <li style="margin-bottom: 1rem;">🚀 <strong>AI agent ready</strong> - Built for autonomy</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Use Cases -->
+  <section style="max-width: 1200px; margin: 6rem auto; padding: 0 2rem;">
+    <div style="text-align: center; margin-bottom: 4rem;">
+      <h2 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">
+        <span class="gradient-text">Built for Autonomous Systems</span>
+      </h2>
+      <p style="font-size: 1.125rem; color: #94a3b8; max-width: 700px; margin: 0 auto;">
+        Real-world use cases where AI agents need blockchain data without human intervention
+      </p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🤖</div>
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #f1f5f9;">DeFi Trading Bots</h3>
+        <p style="color: #cbd5e1; margin-bottom: 1rem; line-height: 1.6;">
+          Autonomous bots need real-time price data, pool reserves, and transaction status. Pay $0.0001 per query, no human setup.
+        </p>
+        <p style="color: #60a5fa; font-size: 0.875rem;">
+          1M calls/month = $80-100 (vs $200-500 traditional)
+        </p>
+      </div>
+      
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 1rem;">📊</div>
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #f1f5f9;">NFT Analytics Agents</h3>
+        <p style="color: #cbd5e1; margin-bottom: 1rem; line-height: 1.6;">
+          Scan collections, track floor prices, analyze metadata. Agents pay per query, scale automatically.
+        </p>
+        <p style="color: #60a5fa; font-size: 0.875rem;">
+          100K calls/month = $8-10 (pay-per-use only)
+        </p>
+      </div>
+      
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔗</div>
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #f1f5f9;">Cross-Chain Indexers</h3>
+        <p style="color: #cbd5e1; margin-bottom: 1rem; line-height: 1.6;">
+          Query Solana, Ethereum, and Base with one API. Intelligent routing ensures best provider for each chain.
+        </p>
+        <p style="color: #60a5fa; font-size: 0.875rem;">
+          Multi-chain support • Automatic failover
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Terminal Demo -->
+  <section class="terminal-demo">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <h2 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">
+        <span class="gradient-text">See It In Action</span>
+      </h2>
+      <p style="font-size: 1.125rem; color: #94a3b8;">
+        30-second flow: Discover → Pay → Get Data
+      </p>
+    </div>
+    
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+      </div>
+      <div class="terminal-body">
+        <div>
+          <span class="terminal-prompt">$</span>
+          <span class="terminal-command"> curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \</span>
+        </div>
+        <div>
+          <span class="terminal-output">-d '{"method":"getSlot","chain":"solana"}'</span>
+        </div>
+        <div style="margin-top: 1rem;">
+          <span class="terminal-output">{</span>
+        </div>
+        <div>
+          <span class="terminal-output">  "invoice": {</span>
+        </div>
+        <div>
+          <span class="terminal-output">    "amount": <span class="terminal-success">0.0001</span>,</span>
+        </div>
+        <div>
+          <span class="terminal-output">    "provider": <span class="terminal-success">"Triton One"</span>,</span>
+        </div>
+        <div>
+          <span class="terminal-output">    "network": "solana-mainnet"</span>
+        </div>
+        <div>
+          <span class="terminal-output">  }</span>
+        </div>
+        <div>
+          <span class="terminal-output">}</span>
+        </div>
+        <div style="margin-top: 1rem;">
+          <span class="terminal-success">✓ Agent pays $0.0001 autonomously → RPC call executed</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audience CTAs -->
+  <section style="max-width: 1200px; margin: 6rem auto; padding: 0 2rem;">
+    <div style="text-align: center; margin-bottom: 4rem;">
+      <h2 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">
+        <span class="gradient-text">Built for Everyone in Web3</span>
+      </h2>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;">
+      <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 2.5rem;">
+        <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem; color: #a78bfa;">AI/ML Developers</h3>
+        <p style="font-size: 1.125rem; color: #cbd5e1; margin-bottom: 2rem; line-height: 1.6;">
+          Build truly autonomous AI agents that can discover, pay for, and use blockchain RPC services independently.
+        </p>
+        <ul style="margin-bottom: 2rem; color: #94a3b8;">
+          <li style="margin-bottom: 0.5rem;">✅ Zero human intervention required</li>
+          <li style="margin-bottom: 0.5rem;">✅ Agents handle payments autonomously</li>
+          <li style="margin-bottom: 0.5rem;">✅ Multi-provider access with auto-failover</li>
+        </ul>
+        <a href="/agent" style="display: inline-block; background: #8b5cf6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Build Your First Agent in 5 Minutes →
+        </a>
+      </div>
+      
+      <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 2.5rem;">
+        <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem; color: #60a5fa;">Web3 Developers</h3>
+        <p style="font-size: 1.125rem; color: #cbd5e1; margin-bottom: 2rem; line-height: 1.6;">
+          Stop juggling RPC provider API keys. Get intelligent routing across 8+ providers with automatic failover.
+        </p>
+        <ul style="margin-bottom: 2rem; color: #94a3b8;">
+          <li style="margin-bottom: 0.5rem;">✅ 99.9% uptime with multi-provider failover</li>
+          <li style="margin-bottom: 0.5rem;">✅ Pay only for what you use</li>
+          <li style="margin-bottom: 0.5rem;">✅ No vendor lock-in</li>
+        </ul>
+        <a href="/demo" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Start with 1,000 Free Calls →
+        </a>
+      </div>
+      
+      <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 2.5rem;">
+        <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem; color: #10b981;">Enterprises</h3>
+        <p style="font-size: 1.125rem; color: #cbd5e1; margin-bottom: 2rem; line-height: 1.6;">
+          Enterprise-grade RPC with self-hosted facilitator. Full control over payments, keys, and compliance.
+        </p>
+        <ul style="margin-bottom: 2rem; color: #94a3b8;">
+          <li style="margin-bottom: 0.5rem;">✅ Self-hosted payment infrastructure</li>
+          <li style="margin-bottom: 0.5rem;">✅ Custom routing & settlement logic</li>
+          <li style="margin-bottom: 0.5rem;">✅ Compliance-ready architecture</li>
+        </ul>
+        <a href="https://github.com/x402-labs/x402-rpc-aggregator#facilitator" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Deploy Your Facilitator in 10 Min →
+        </a>
+      </div>
+      
+      <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 16px; padding: 2.5rem;">
+        <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem; color: #f59e0b;">RPC Providers</h3>
+        <p style="font-size: 1.125rem; color: #cbd5e1; margin-bottom: 2rem; line-height: 1.6;">
+          Monetize your RPC infrastructure with instant micropayments. No complex billing systems needed.
+        </p>
+        <ul style="margin-bottom: 2rem; color: #94a3b8;">
+          <li style="margin-bottom: 0.5rem;">✅ Instant USDC settlements</li>
+          <li style="margin-bottom: 0.5rem;">✅ Standard JSON-RPC interface</li>
+          <li style="margin-bottom: 0.5rem;">✅ Automatic traffic routing</li>
+        </ul>
+        <a href="https://github.com/x402-labs" style="display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Join the Provider Network →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <h2 class="section-title">Why x402?</h2>
+    
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-badge">LIVE</span>
+        <div class="feature-icon">🚀</div>
+        <h3 class="feature-title">Intelligent Routing</h3>
+        <p class="feature-description">
+          Automatic provider selection based on cost, latency, or priority. Health monitoring with auto-fallback ensures 99.9% uptime.
+        </p>
+        <a href="/providers" class="feature-link">View Providers →</a>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-badge">LIVE</span>
+        <div class="feature-icon">💰</div>
+        <h3 class="feature-title">x402 Micropayments</h3>
+        <p class="feature-description">
+          Pay per call with USDC on Solana or Base. No subscriptions, no API keys. Perfect for AI agents and autonomous systems.
+        </p>
+        <a href="/demo" class="feature-link">Try Demo →</a>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-badge">LIVE</span>
+        <div class="feature-icon">🎯</div>
+        <h3 class="feature-title">Multi-Chain Support</h3>
+        <p class="feature-description">
+          Access Solana, Ethereum, and Base with a single API. Unified interface for all your blockchain RPC needs.
+        </p>
+        <a href="/api-docs" class="feature-link">API Docs →</a>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-badge">LIVE</span>
+        <div class="feature-icon">📦</div>
+        <h3 class="feature-title">Batch Payments</h3>
+        <p class="feature-description">
+          Get 20% discount with batch purchases. Buy 1,000 calls for $0.08 instead of $0.10. Perfect for high-frequency trading bots.
+        </p>
+        <a href="/api-docs#batch" class="feature-link">Learn More →</a>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-badge">LIVE</span>
+        <div class="feature-icon">🤖</div>
+        <h3 class="feature-title">AI Agent Ready</h3>
+        <p class="feature-description">
+          Built for autonomous systems. No human interaction needed. Agents can discover, pay, and consume RPC services independently.
+        </p>
+        <a href="/agent" class="feature-link">See Demo →</a>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-badge">LIVE</span>
+        <div class="feature-icon">📊</div>
+        <h3 class="feature-title">Real-Time Analytics</h3>
+        <p class="feature-description">
+          Monitor provider health, latency, and costs in real-time. Make informed decisions with comprehensive metrics.
+        </p>
+        <a href="/health" class="feature-link">View Status →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ecosystem -->
+  <section class="ecosystem">
+    <h2 class="section-title">Trusted by the Best</h2>
+    <p class="subtitle" style="font-size: 1.125rem; margin-bottom: 3rem;">
+      Integrated with leading RPC providers across Solana, Ethereum, and Base
+    </p>
+    
+    <div class="providers">
+      <div class="provider-logo">Triton One</div>
+      <div class="provider-logo">Helius</div>
+      <div class="provider-logo">QuickNode</div>
+      <div class="provider-logo">Alchemy</div>
+      <div class="provider-logo">Infura</div>
+      <div class="provider-logo">Solana</div>
+      <div class="provider-logo">Ethereum</div>
+      <div class="provider-logo">Base</div>
+      <div class="provider-logo">x402 Protocol</div>
+      <div class="provider-logo">PayAI Network</div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section style="max-width: 900px; margin: 6rem auto; padding: 4rem 2rem; text-align: center; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px;">
+    <h2 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1.5rem;">
+      <span class="gradient-text">Ready to Build?</span>
+    </h2>
+    <p style="font-size: 1.25rem; color: #cbd5e1; margin-bottom: 2.5rem; line-height: 1.6;">
+      Join developers building the machine economy.<br/>
+      <strong>Start with your first autonomous RPC call in under 5 minutes.</strong>
+    </p>
+    <div style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;">
+      <a href="/demo" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 1.125rem; box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);">
+        🚀 Try Live Demo
+      </a>
+      <a href="https://github.com/x402-labs" target="_blank" style="display: inline-block; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 1.125rem;">
+        📚 View Documentation
+      </a>
+    </div>
+    <p style="margin-top: 2rem; color: #94a3b8; font-size: 0.875rem;">
+      First 1,000 calls free • No credit card required
+    </p>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>⚡ x402-RPC-Aggregator</h3>
+        <p style="color: #cbd5e1; margin-top: 1rem;">
+          Payments for the AI Age. Tools and infrastructure for autonomous agent transactions.
+        </p>
+      </div>
+      
+      <div class="footer-section">
+        <h3>Product</h3>
+        <ul>
+          <li><a href="/demo">Live Demo</a></li>
+          <li><a href="/agent">AI Agent</a></li>
+          <li><a href="/providers">Providers</a></li>
+          <li><a href="/health">Status</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-section">
+        <h3>Developers</h3>
+        <ul>
+          <li><a href="/api-docs">API Documentation</a></li>
+          <li><a href="https://github.com/x402-labs" target="_blank">GitHub</a></li>
+          <li><a href="/api-docs#quick-start">Quick Start</a></li>
+          <li><a href="/api-docs#examples">Examples</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-section">
+        <h3>Resources</h3>
+        <ul>
+          <li><a href="https://payai.network" target="_blank">PayAI Network</a></li>
+          <li><a href="https://triton.one" target="_blank">Triton.one</a></li>
+          <li><a href="https://docs.solana.com" target="_blank">Solana Docs</a></li>
+          <li><a href="https://github.com/x402-protocol" target="_blank">x402 Protocol</a></li>
+        </ul>
+    </div>
+  </div>
+
+    <div class="footer-bottom">
+      <p>© 2025 x402-RPC-Aggregator. Built for autonomous AI agents and the decentralized web.</p>
+    </div>
+  </footer>
+
+  <!-- Schema.org structured data for SEO -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "x402-RPC-Aggregator",
+    "description": "Intelligent RPC aggregator with x402 micropayments for AI agents",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0.0001",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+</body>
+</html>

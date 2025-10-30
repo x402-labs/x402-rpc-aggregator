@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- X402 Labs Logo -->
+  <defs>
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60A5FA;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- X Shape -->
+  <path d="M 50,40 L 90,100 L 50,160 L 70,160 L 100,115 L 130,160 L 150,160 L 110,100 L 150,40 L 130,40 L 100,85 L 70,40 Z" 
+        fill="url(#blueGradient)" />
+  
+  <!-- 402 Text (simplified) -->
+  <text x="100" y="190" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#1E40AF" text-anchor="middle">
+    402 LABS
+  </text>
+</svg>
+

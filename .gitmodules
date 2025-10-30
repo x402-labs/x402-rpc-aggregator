@@ -1,0 +1,3 @@
+[submodule "x402-sovereign"]
+	path = x402-sovereign
+	url = https://github.com/Dhaiwat10/x402-sovereign.git

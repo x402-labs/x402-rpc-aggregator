@@ -1,0 +1,81 @@
+{
+  "name": "@x402-multichain/facilitator",
+  "version": "1.0.0",
+  "description": "Self-hosted multichain x402 payment facilitator for Solana and EVM",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./solana": {
+      "import": "./dist/chains/solana/index.js",
+      "types": "./dist/chains/solana/index.d.ts"
+    },
+    "./evm": {
+      "import": "./dist/chains/evm/index.js",
+      "types": "./dist/chains/evm/index.d.ts"
+    },
+    "./adapters/express": {
+      "import": "./dist/adapters/express.js",
+      "types": "./dist/adapters/express.d.ts"
+    },
+    "./adapters/hono": {
+      "import": "./dist/adapters/hono.js",
+      "types": "./dist/adapters/hono.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "x402",
+    "solana",
+    "evm",
+    "facilitator",
+    "payments",
+    "multichain",
+    "base",
+    "ethereum",
+    "self-hosted"
+  ],
+  "author": "x402-labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/x402-labs/x402-multichain-facilitator",
+    "directory": "packages/core"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.91.1",
+    "@solana/spl-token": "^0.4.1",
+    "viem": "^2.0.0",
+    "bs58": "^5.0.0",
+    "tweetnacl": "^1.0.3",
+    "axios": "^1.7.2",
+    "x402": "^0.6.6"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0",
+    "hono": "^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5",
+    "vitest": "^1.0.0"
+  }
+}
+

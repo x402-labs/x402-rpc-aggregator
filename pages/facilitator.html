@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Facilitator Configuration | x402-RPC-Aggregator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+    
+    /* Header */
+    header {
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #a78bfa;
+      text-decoration: none;
+    }
+    
+    nav a {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-weight: 500;
+      margin-left: 2rem;
+    }
+    
+    nav a:hover {
+      color: #a78bfa;
+    }
+    
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #f1f5f9 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #cbd5e1;
+      margin-bottom: 3rem;
+    }
+    
+    /* Status Cards */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+    
+    .status-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 1rem;
+      padding: 2rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .status-card.active {
+      border-color: rgba(16, 185, 129, 0.3);
+      background: rgba(30, 41, 59, 0.7);
+    }
+    
+    .status-card.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1.5rem;
+    }
+    
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    
+    .status-badge {
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .status-badge.available {
+      background: #10b981;
+      color: white;
+    }
+    
+    .status-badge.unavailable {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .status-badge.primary {
+      background: #8b5cf6;
+      color: white;
+    }
+    
+    .status-badge.fallback {
+      background: #f59e0b;
+      color: white;
+    }
+    
+    .card-details {
+      display: grid;
+      gap: 1rem;
+    }
+    
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.5rem;
+    }
+    
+    .detail-label {
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+    
+    .detail-value {
+      color: #e2e8f0;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    /* Configuration Guide */
+    .config-guide {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 1rem;
+      padding: 2rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      margin-bottom: 3rem;
+    }
+    
+    .config-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: #e2e8f0;
+    }
+    
+    .config-options {
+      display: grid;
+      gap: 1rem;
+    }
+    
+    .config-option {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .config-option:hover {
+      border-color: rgba(139, 92, 246, 0.3);
+      transform: translateX(5px);
+    }
+    
+    .config-option h4 {
+      color: #a78bfa;
+      margin-bottom: 0.5rem;
+      font-size: 1.125rem;
+    }
+    
+    .config-option p {
+      color: #cbd5e1;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .config-code {
+      background: #0f172a;
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      font-family: 'Monaco', monospace;
+      font-size: 0.75rem;
+      color: #10b981;
+    }
+    
+    /* Recommendation Box */
+    .recommendation {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05));
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    
+    .recommendation-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .recommendation-text {
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+    
+    .recommendation-highlight {
+      color: #a78bfa;
+      font-weight: 600;
+    }
+    
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 4rem;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(139, 92, 246, 0.1);
+      border-top: 3px solid #8b5cf6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <a href="/" class="logo">⚡ x402-RPC Facilitator</a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/providers-ui">Providers</a>
+        <a href="/api-reference">Docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <h1>Facilitator Configuration</h1>
+    <p class="subtitle">
+      Choose between Self-Hosted or PayAI facilitators for x402 payment settlement
+    </p>
+
+    <!-- Loading State -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Loading facilitator status...</p>
+    </div>
+
+    <!-- Current Status -->
+    <div id="status-content" style="display: none;">
+      <div class="status-grid" id="status-grid"></div>
+
+      <!-- Recommendation -->
+      <div class="recommendation" id="recommendation"></div>
+
+      <!-- Configuration Guide -->
+      <div class="config-guide">
+        <h3 class="config-title">Available Configuration Options</h3>
+        
+        <div class="config-options">
+          <div class="config-option">
+            <h4>⚡ PayAI Network (Recommended for Quick Start)</h4>
+            <p>
+              Zero network fees, sub-second settlement, no infrastructure to manage.
+              Perfect for AI agents and quick prototyping.
+            </p>
+            <div class="config-code">
+              X402_FACILITATOR_TYPE=payai<br>
+              X402_WALLET=your_wallet_address
+            </div>
+          </div>
+
+          <div class="config-option">
+            <h4>🏠 Self-Hosted (Maximum Control)</h4>
+            <p>
+              Full control over payment flow and verification. Ideal for enterprise 
+              deployments and custom settlement logic.
+            </p>
+            <div class="config-code">
+              X402_FACILITATOR_TYPE=self-hosted<br>
+              SOLANA_PRIVATE_KEY=your_base58_key<br>
+              X402_WALLET=your_wallet_address
+            </div>
+          </div>
+
+          <div class="config-option">
+            <h4>🔄 Auto with Fallback (Production Ready)</h4>
+            <p>
+              Best of both worlds. Try self-hosted first, automatically fallback to PayAI 
+              if unavailable. 99.99% uptime guarantee.
+            </p>
+            <div class="config-code">
+              X402_FACILITATOR_TYPE=auto<br>
+              SOLANA_PRIVATE_KEY=your_base58_key<br>
+              X402_WALLET=your_wallet_address<br>
+              X402_ENABLE_FALLBACK=true<br>
+              X402_FALLBACK_TYPE=payai
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadFacilitatorStatus() {
+      try {
+        const response = await fetch('/facilitator');
+        const data = await response.json();
+        
+        renderStatus(data);
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('status-content').style.display = 'block';
+      } catch (error) {
+        console.error('Failed to load facilitator status:', error);
+        document.getElementById('loading').innerHTML = 
+          '<p style="color: #ef4444;">Failed to load facilitator status. Please check server.</p>';
+      }
+    }
+
+    function renderStatus(data) {
+      const { primary, fallback, configuration, recommendation } = data;
+      
+      // Render status cards
+      const statusGrid = document.getElementById('status-grid');
+      statusGrid.innerHTML = '';
+
+      // Primary facilitator
+      if (primary) {
+        statusGrid.innerHTML += createFacilitatorCard(
+          primary,
+          'Primary Facilitator',
+          true
+        );
+      }
+
+      // Fallback facilitator
+      if (fallback) {
+        statusGrid.innerHTML += createFacilitatorCard(
+          fallback,
+          'Fallback Facilitator',
+          false
+        );
+      }
+
+      // Configuration card
+      statusGrid.innerHTML += `
+        <div class="status-card">
+          <div class="card-header">
+            <h3 class="card-title">Configuration</h3>
+            <span class="status-badge primary">ACTIVE</span>
+          </div>
+          <div class="card-details">
+            <div class="detail-row">
+              <span class="detail-label">Mode</span>
+              <span class="detail-value">${configuration.type.toUpperCase()}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Fallback Enabled</span>
+              <span class="detail-value">${configuration.fallbackEnabled ? 'YES' : 'NO'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Environment</span>
+              <span class="detail-value">PRODUCTION</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Render recommendation
+      const recBox = document.getElementById('recommendation');
+      const icon = primary.available && !fallback ? '✅' : 
+                   primary.available && fallback ? '🔄' : '⚠️';
+      
+      recBox.innerHTML = `
+        <div class="recommendation-icon">${icon}</div>
+        <div class="recommendation-text">
+          <strong class="recommendation-highlight">Recommendation:</strong>
+          ${recommendation}
+        </div>
+      `;
+    }
+
+    function createFacilitatorCard(facilitator, label, isPrimary) {
+      const statusClass = facilitator.available ? 'available' : 'unavailable';
+      const typeLabel = isPrimary ? 'primary' : 'fallback';
+      
+      return `
+        <div class="status-card ${facilitator.available ? 'active' : ''}">
+          <div class="card-header">
+            <h3 class="card-title">${label}</h3>
+            <div>
+              <span class="status-badge ${typeLabel}">${typeLabel.toUpperCase()}</span>
+              <span class="status-badge ${statusClass}" style="margin-left: 0.5rem;">
+                ${facilitator.available ? 'AVAILABLE' : 'UNAVAILABLE'}
+              </span>
+            </div>
+          </div>
+          <div class="card-details">
+            <div class="detail-row">
+              <span class="detail-label">Name</span>
+              <span class="detail-value">${facilitator.name || 'Not Configured'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Type</span>
+              <span class="detail-value">${facilitator.type || 'none'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Status</span>
+              <span class="detail-value" style="color: ${facilitator.available ? '#10b981' : '#ef4444'}">
+                ${facilitator.available ? '● ONLINE' : '● OFFLINE'}
+              </span>
+            </div>
+            ${facilitator.type === 'payai' ? `
+              <div class="detail-row">
+                <span class="detail-label">Network Fees</span>
+                <span class="detail-value" style="color: #10b981">$0 (FREE)</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Settlement Speed</span>
+                <span class="detail-value" style="color: #10b981">&lt;1 second</span>
+              </div>
+            ` : ''}
+            ${facilitator.type === 'self-hosted' ? `
+              <div class="detail-row">
+                <span class="detail-label">Network Fees</span>
+                <span class="detail-value">~$0.00001/tx</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Settlement Speed</span>
+                <span class="detail-value">3-5 seconds</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Initialize
+    loadFacilitatorStatus();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadFacilitatorStatus, 30000);
+  </script>
+</body>
+</html>
+

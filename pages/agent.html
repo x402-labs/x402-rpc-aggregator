@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Agent Demo | x402 Labs - Micropayments for the Machine Economy</title>
+  <link rel="icon" type="image/png" href="/assets/FullLogo_Transparent.png">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  
+  <!-- Enhanced Buffer polyfill for Solana web3.js -->
+  <script>
+    (function() {
+      // Create a robust Buffer polyfill that returns real Uint8Arrays
+      const BufferPolyfill = {
+        from: function(value, encoding) {
+          if (typeof value === 'string') {
+            return new Uint8Array(new TextEncoder().encode(value));
+          }
+          if (value instanceof Uint8Array) {
+            return new Uint8Array(value);
+          }
+          if (Array.isArray(value)) {
+            return new Uint8Array(value);
+          }
+          if (value?.buffer instanceof ArrayBuffer) {
+            return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+          }
+          return new Uint8Array(value);
+        },
+        
+        alloc: function(size, fill = 0) {
+          const buf = new Uint8Array(size);
+          if (fill !== 0) buf.fill(fill);
+          return buf;
+        },
+        
+        allocUnsafe: function(size) {
+          return new Uint8Array(size);
+        },
+        
+        isBuffer: function(obj) {
+          return obj instanceof Uint8Array || obj instanceof ArrayBuffer;
+        },
+        
+        concat: function(list, totalLength) {
+          if (!totalLength) {
+            totalLength = list.reduce((acc, buf) => acc + buf.length, 0);
+          }
+          const result = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const buf of list) {
+            result.set(new Uint8Array(buf), offset);
+            offset += buf.length;
+          }
+          return result;
+        }
+      };
+      
+      window.Buffer = BufferPolyfill;
+      console.log('✅ Enhanced Buffer polyfill loaded');
+    })();
+  </script>
+  
+  <!-- x402 Labs theme (design.svg palette) -->
+  <style>
+    :root {
+      --bg: #DFEFFB;
+      --bg2: #E8F4F8;
+      --text: #0E4D81;
+      --primary: #177CCF;
+      --primaryDark: #0E4D81;
+      --card: #FFFFFF;
+      --soft: #E7F1F9;
+      --muted: #6B8CA8;
+    }
+    body { background: linear-gradient(135deg, var(--bg) 0%, var(--bg2) 100%) !important; color: var(--text) !important; }
+    .bg-gray-900 { background-color: var(--bg) !important; }
+    .bg-gray-800 { background-color: var(--card) !important; border: 1px solid rgba(23,124,207,0.15); box-shadow: 0 6px 20px rgba(14,77,129,0.06); }
+    .text-white { color: var(--text) !important; }
+    .text-gray-400 { color: var(--muted) !important; }
+    .text-gray-500 { color: var(--muted) !important; }
+    .text-purple-400 { color: var(--primary) !important; }
+    .bg-gradient-to-r { background: linear-gradient(135deg, var(--primary) 0%, var(--primaryDark) 100%) !important; }
+    .bg-blue-400, .text-blue-400 { color: var(--primary) !important; }
+    .text-green-400 { color: #1EA971 !important; }
+  </style>
+  
+  <!-- Use v1.20.3 - Ancient stable version, proven to work with Phantom -->
+  <script src="https://unpkg.com/@solana/web3.js@1.20.3/lib/index.iife.min.js"></script>
+  
+  <!-- Inline bs58 implementation -->
+  <script>
+    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    window.bs58 = {
+      encode: function(buffer) {
+        try {
+          // Ensure buffer is a proper Uint8Array or array-like
+          if (!buffer || typeof buffer.length === 'undefined') {
+            console.error('❌ bs58.encode: buffer is not array-like:', buffer);
+            throw new Error('Buffer must be array-like');
+          }
+          
+          // Convert to plain array to avoid any prototype issues
+          const bytes = Array.from(buffer);
+          
+          // Validate all bytes are numbers 0-255
+          for (let i = 0; i < bytes.length; i++) {
+            if (typeof bytes[i] !== 'number' || bytes[i] < 0 || bytes[i] > 255 || !Number.isInteger(bytes[i])) {
+              console.error(`❌ bs58.encode: Invalid byte at index ${i}:`, bytes[i], typeof bytes[i]);
+              throw new Error(`Invalid byte at index ${i}: ${bytes[i]} (type: ${typeof bytes[i]})`);
+            }
+          }
+          
+          if (bytes.length === 0) return '';
+          
+          const digits = [0];
+          for (let i = 0; i < bytes.length; i++) {
+            let carry = bytes[i];
+            for (let j = 0; j < digits.length; j++) {
+              carry += digits[j] << 8;
+              digits[j] = carry % 58;
+              carry = (carry / 58) | 0;
+            }
+            while (carry > 0) {
+              digits.push(carry % 58);
+              carry = (carry / 58) | 0;
+            }
+          }
+          
+          let result = '';
+          for (let i = 0; i < bytes.length && bytes[i] === 0; i++) result += '1';
+          for (let i = digits.length - 1; i >= 0; i--) result += BASE58_ALPHABET[digits[i]];
+          return result;
+        } catch (err) {
+          console.error('❌ bs58.encode error:', err);
+          throw err;
+        }
+      },
+      decode: function(string) {
+        if (typeof string !== 'string') {
+          throw new Error('Input must be a string');
+        }
+        if (string.length === 0) return new Uint8Array(0);
+        
+        const bytes = [0];
+        for (let i = 0; i < string.length; i++) {
+          const value = BASE58_ALPHABET.indexOf(string[i]);
+          if (value === -1) {
+            throw new Error(`Non-base58 character "${string[i]}" at position ${i}`);
+          }
+          let carry = value;
+          for (let j = 0; j < bytes.length; j++) {
+            carry += bytes[j] * 58;
+            bytes[j] = carry & 0xff;
+            carry >>= 8;
+          }
+          while (carry > 0) {
+            bytes.push(carry & 0xff);
+            carry >>= 8;
+          }
+        }
+        for (let i = 0; i < string.length && string[i] === '1'; i++) bytes.push(0);
+        return new Uint8Array(bytes.reverse());
+      }
+    };
+    console.log('✅ bs58 loaded with enhanced validation');
+  </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+
+  <div class="container mx-auto px-6 py-12">
+    <div class="flex items-center justify-between mb-8">
+      <a href="/" class="text-purple-400 hover:underline text-sm">&larr; Back to Home</a>
+      <img src="/assets/FullLogo_Transparent.png" alt="x402 Labs" class="h-20 md:h-24">
+    </div>
+    <h1 class="text-4xl font-bold mb-2">AI Agent Demo</h1>
+    <p class="text-gray-400 mb-2">Autonomous x402 payments • 10+ RPC calls • sendTransaction via Triton • Self-funding</p>
+    <p class="text-gray-500 text-sm mb-8">Micropayments for the Machine Economy™</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- LEFT: Controls -->
+      <div class="space-y-6">
+        <div class="bg-gray-800 p-6 rounded-xl">
+          <button id="start" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg font-bold text-lg">
+            Start Autonomous Agent
+          </button>
+          <p class="mt-4 text-sm text-gray-400">Agent will run 10 RPC calls via Triton, including <strong class="text-purple-300">sendTransaction</strong>, and pay automatically with SOL via X-Labs</p>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-xl">
+          <h3 class="font-semibold mb-2">Agent Status</h3>
+          <p id="status" class="text-yellow-400">Ready</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: Live Log -->
+      <div class="bg-gray-800 p-6 rounded-xl h-96 overflow-y-auto font-mono text-xs">
+        <pre id="log"></pre>
+      </div>
+    </div>
+
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <p class="text-2xl font-bold text-green-400" id="calls">0</p>
+        <p class="text-sm text-gray-400">RPC Calls</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <p class="text-2xl font-bold text-blue-400" id="paid">$0.00</p>
+        <p class="text-sm text-gray-400">Total Paid</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <p class="text-2xl font-bold text-purple-400" id="txs">0</p>
+        <p class="text-sm text-gray-400">Txs Confirmed</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-detect API URL
+    const BASE_URL = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000'
+      : 'https://x402-rpc-aggregator.up.railway.app';
+    
+    const API = `${BASE_URL}/rpc`;
+    const SOLANA_RPC_PROXY = `${BASE_URL}/solana-rpc`;  // Secure proxy
+    
+    console.log('Using x402 RPC API:', API);
+    console.log('Using Solana RPC proxy (secure)');
+    const log = (msg) => {
+      const el = document.createElement('div');
+      el.innerHTML = `<span class="timestamp">[${new Date().toISOString().slice(11,19)}]</span> ${msg}`;
+      document.getElementById('log').appendChild(el);
+      el.scrollIntoView();
+    };
+
+    let calls = 0, paid = 0, txs = 0;
+    const updateStats = () => {
+      document.getElementById('calls').innerText = calls;
+      document.getElementById('paid').innerText = `$${paid.toFixed(6)}`;
+      document.getElementById('txs').innerText = txs;
+    };
+
+    document.getElementById('start').onclick = async () => {
+      document.getElementById('start').disabled = true;
+      document.getElementById('status').innerText = 'Starting...';
+      log('AI Agent initialized');
+
+      const wallet = window.solana;
+      if (!wallet?.isPhantom) {
+        log('Phantom not found');
+        return;
+      }
+
+      try {
+        await wallet.connect();
+        log(`Wallet connected: ${wallet.publicKey.toBase58().slice(0,8)}...`);
+
+        // Build a sample transaction for sendTransaction demo
+        log('📦 Building sample transaction for sendTransaction demo...');
+        const sampleTx = await buildSampleTransaction(wallet);
+        
+        const tasks = [
+          { method: 'getSlot', params: [], chain: 'solana', desc: 'Get Solana slot' },
+          { method: 'getBalance', params: [wallet.publicKey.toBase58()], chain: 'solana', desc: 'Get SOL balance' },
+          { method: 'sendTransaction', params: [sampleTx], chain: 'solana', desc: '📤 Broadcast transaction via Triton' },
+          { method: 'getSlot', params: [], chain: 'solana', desc: 'Get slot again' },
+          { method: 'eth_blockNumber', params: [], chain: 'base', desc: 'Get Base block' },
+        ].concat(Array(5).fill().map((_, i) => ({
+          method: 'getSlot',
+          params: [],
+          chain: 'solana',
+          desc: `Triton check #${i+1}`
+        })));
+
+        for (const task of tasks) {
+          // Skip sendTransaction if sample tx wasn't built
+          if (task.method === 'sendTransaction' && !task.params[0]) {
+            log(`⏭️ Skipping sendTransaction (sample tx build failed)`);
+            continue;
+          }
+          
+          calls++;
+          updateStats();
+          log(`Task ${calls}: ${task.desc}`);
+
+          const res = await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              method: task.method,
+              params: task.params,
+              chain: task.chain,
+              facilitator: 'xlab' // Use X-Labs for agent autonomy
+            }),
+          });
+
+          if (res.status === 402) {
+            const { invoice } = await res.json();
+            paid += invoice.amount;
+            updateStats();
+            log(`402: Pay $${invoice.amount} via ${invoice.network}`);
+
+            const payment = await payWithX402(invoice, task.chain, wallet);
+            const retry = await fetch(API, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x402-payment': JSON.stringify(payment),
+              },
+              body: JSON.stringify({
+                method: task.method,
+                params: task.params,
+                chain: task.chain,
+                facilitator: 'xlab'
+              }),
+            });
+
+            const data = await retry.json();
+            txs++;
+            updateStats();
+            
+            // Display payment confirmation
+            if (data.x402 && data.x402.paymentInfo) {
+              log(`💰 Paid! Tx: <a href="${data.x402.paymentInfo.explorer}" target="_blank" class="text-purple-400 underline">${data.x402.paymentInfo.txHash.slice(0,8)}...</a>`);
+            }
+            
+            // Display RPC result
+            if (task.method === 'sendTransaction' && data.result) {
+              log(`📤 Transaction broadcast! Signature: <span class="text-green-400">${data.result.substring(0, 16)}...</span>`);
+            } else if (data.result !== undefined) {
+              const resultStr = JSON.stringify(data.result);
+              log(`✅ Result: ${resultStr ? resultStr.slice(0,100) : 'null'}...`);
+            } else if (data.error) {
+              log(`❌ Error: ${data.error.message || JSON.stringify(data.error)}`);
+            }
+          } else {
+            const data = await res.json();
+            const resultStr = JSON.stringify(data.result);
+            log(`Free call: ${resultStr ? resultStr.slice(0,100) : 'null'}...`);
+          }
+
+          await new Promise(r => setTimeout(r, 2000)); // Rate limit
+        }
+
+        log('Agent completed all tasks');
+        document.getElementById('status').innerHTML = '<span class="text-green-400">Complete</span>';
+      } catch (err) {
+        log(`Error: ${err.message}`);
+      } finally {
+        document.getElementById('start').disabled = false;
+      }
+    };
+
+    async function buildSampleTransaction(wallet) {
+      try {
+        const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3;
+        
+        // Get recent blockhash
+        const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getLatestBlockhash',
+            params: [{ commitment: 'finalized' }]
+          })
+        });
+        const blockhashData = await blockhashRes.json();
+        const blockhash = blockhashData.result.value.blockhash;
+        
+        // Build a simple self-transfer (will fail but demonstrates sendTransaction)
+        const tx = new Transaction();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = wallet.publicKey;
+        
+        // Add a memo instruction (safe, won't actually execute)
+        const memoData = Buffer.from('x402 Agent Test Transaction', 'utf8');
+        const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+        
+        tx.add({
+          keys: [{ pubkey: wallet.publicKey, isSigner: true, isWritable: false }],
+          programId: MEMO_PROGRAM_ID,
+          data: memoData
+        });
+        
+        // Sign the transaction
+        const signed = await wallet.signTransaction(tx);
+        const serialized = signed.serialize();
+        
+        // Return base58-encoded transaction (Solana RPC format)
+        return bs58.encode(serialized);
+      } catch (err) {
+        log(`⚠️ Failed to build sample tx: ${err.message}`);
+        return null; // Return null, agent will skip this task
+      }
+    }
+
+    async function payWithX402(invoice, chain, wallet) {
+      try {
+        log('💰 Building payment for ' + chain + '...');
+        
+        if (chain === 'base') {
+          const { signMessage } = window.ethereum;
+          const msg = new TextEncoder().encode(JSON.stringify(invoice));
+          const sig = await signMessage(msg);
+          return {
+            paymentPayload: { signedIntent: { signature: bs58.encode(sig) } },
+            paymentRequirements: { amount: invoice.amount, recipient: invoice.to },
+          };
+        }
+
+        // Solana - use 10M lamports (0.01 SOL) for reliable payments (same as demo.html)
+        const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3;
+        
+        // Get blockhash via proxy (finalized commitment for stability)
+        log('📡 Getting blockhash...');
+        const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getLatestBlockhash',
+            params: [{ commitment: 'finalized' }]
+          })
+        });
+        const blockhashData = await blockhashRes.json();
+        
+        if (!blockhashData.result?.value?.blockhash) {
+          throw new Error('Failed to get blockhash');
+        }
+        
+        const blockhash = blockhashData.result.value.blockhash;
+        log('✅ Got blockhash: ' + blockhash.substring(0,8) + '...');
+        
+        // Build transaction
+        const tx = new Transaction();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = wallet.publicKey;
+
+        // Use 10M lamports (0.01 SOL) to cover rent + fees
+        const lamports = 10000000;
+        tx.add(SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: new PublicKey(invoice.to),
+          lamports: lamports  // v1.20.3 handles this correctly
+        }));
+
+        log('✍️ Requesting transaction signature...');
+        let signed;
+        try {
+          signed = await wallet.signTransaction(tx);
+          log('✅ Transaction signed');
+        } catch (signErr) {
+          throw new Error('Transaction signing failed: ' + signErr.message);
+        }
+        
+        let serialized;
+        try {
+          serialized = signed.serialize();
+          console.log('🔍 Serialized type:', serialized.constructor.name);
+          console.log('🔍 Serialized instanceof Uint8Array:', serialized instanceof Uint8Array);
+          console.log('🔍 Serialized length:', serialized.length);
+          
+          // Ensure it's a proper Uint8Array (not a Buffer subclass or weird object)
+          if (!(serialized instanceof Uint8Array)) {
+            console.warn('⚠️ Serialized is not Uint8Array, converting...');
+            serialized = new Uint8Array(serialized);
+          }
+        } catch (serErr) {
+          throw new Error('Transaction serialization failed: ' + serErr.message);
+        }
+        
+        let txBase64;
+        try {
+          // Verify each byte is a valid number before encoding
+          for (let i = 0; i < Math.min(5, serialized.length); i++) {
+            console.log(`🔍 Byte ${i}:`, serialized[i], typeof serialized[i]);
+          }
+          
+          txBase64 = bs58.encode(serialized);
+          console.log('🔍 txBase64 (first 16 chars):', txBase64.substring(0, 16));
+          log('✅ Transaction serialized (' + serialized.length + ' bytes)');
+        } catch (encErr) {
+          console.error('❌ Encoding error details:', encErr);
+          console.error('❌ Serialized data:', serialized);
+          throw new Error('Transaction encoding failed: ' + encErr.message);
+        }
+
+        // Sign intent message  
+        const nonce = invoice.nonce || `${Date.now()}-${Math.random()}`;
+        const intentMessage = JSON.stringify({
+          amount: invoice.amount,
+          to: invoice.to,
+          nonce: nonce,
+          resource: invoice.resource || '/rpc'
+        });
+        
+        log('✍️ Signing payment intent...');
+        const intentMsg = new TextEncoder().encode(intentMessage);
+        
+        let intentSig;
+        try {
+          intentSig = await wallet.signMessage(intentMsg, 'utf8');
+          console.log('🔍 Debug intentSig:', intentSig);
+          console.log('🔍 intentSig.signature type:', typeof intentSig.signature);
+          console.log('🔍 intentSig.signature instanceof Uint8Array:', intentSig.signature instanceof Uint8Array);
+          console.log('🔍 intentSig.signature length:', intentSig.signature?.length);
+          log('✅ Intent signed');
+        } catch (intentErr) {
+          throw new Error('Intent signing failed: ' + intentErr.message);
+        }
+        
+        // Ensure intentSig.signature is a Uint8Array before encoding
+        if (!intentSig || !intentSig.signature) {
+          throw new Error('Invalid signature from wallet');
+        }
+        
+        // Phantom returns signature as Uint8Array, encode it to base58
+        let signatureBase58;
+        try {
+          signatureBase58 = bs58.encode(intentSig.signature);
+          console.log('🔍 signatureBase58:', signatureBase58.substring(0, 16) + '...');
+          log('✅ Payment ready to submit');
+        } catch (sigEncErr) {
+          throw new Error('Signature encoding failed: ' + sigEncErr.message);
+        }
+
+        return {
+          paymentPayload: {
+            signedIntent: { 
+              publicKey: wallet.publicKey.toBase58(), 
+              signature: signatureBase58
+            },
+            txBase64,
+            network: 'solana-mainnet',
+            paymentType: 'SOL'  // Important: tell server this is SOL not USDC
+          },
+          paymentRequirements: { 
+            amount: invoice.amount, 
+            recipient: invoice.to,
+            nonce: nonce
+          },
+        };
+      } catch (error) {
+        log('❌ Payment build failed: ' + error.message);
+        throw error;
+      }
+    }
+  </script>
+
+  <style>
+    .timestamp { color: #94a3b8; margin-right: 8px; }
+  </style>
+</body>
+</html>

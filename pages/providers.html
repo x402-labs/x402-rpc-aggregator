@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <!-- SEO Meta Tags -->
+  <title>RPC Providers | x402-RPC-Aggregator</title>
+  <meta name="description" content="View all available RPC providers for Solana, Ethereum, and Base. Compare costs, latency, and features in real-time." />
+  <meta name="keywords" content="RPC providers, Solana RPC, Ethereum RPC, Base RPC, Triton, Helius, QuickNode, Alchemy" />
+  
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f1f5f9;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    /* Header */
+    header {
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #a78bfa;
+      text-decoration: none;
+    }
+    
+    nav {
+      display: flex;
+      gap: 2rem;
+    }
+    
+    nav a {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    
+    nav a:hover {
+      color: #a78bfa;
+    }
+    
+    /* Main Content */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #f1f5f9 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #cbd5e1;
+      font-size: 1.125rem;
+      margin-bottom: 3rem;
+    }
+    
+    /* Stats Bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    
+    .stat-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #a78bfa;
+      display: block;
+    }
+    
+    .stat-label {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .filter-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .filter-btn {
+      background: rgba(139, 92, 246, 0.1);
+      color: #cbd5e1;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+    
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: rgba(139, 92, 246, 0.4);
+      color: #a78bfa;
+    }
+    
+    select {
+      background: rgba(30, 41, 59, 0.5);
+      color: #cbd5e1;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    
+    /* Provider Cards Grid */
+    .providers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 2rem;
+    }
+    
+    .provider-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 1rem;
+      padding: 2rem;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .provider-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Status Indicator */
+    .status-indicator {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.active {
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    
+    .status-indicator.offline {
+      background: #ef4444;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      animation: none;
+    }
+    
+    .status-indicator.degraded {
+      background: #f59e0b;
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+    }
+    
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+    
+    /* Provider Header */
+    .provider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1.5rem;
+    }
+    
+    .provider-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 0.5rem;
+    }
+    
+    .provider-chains {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    
+    .chain-badge {
+      background: rgba(139, 92, 246, 0.1);
+      color: #a78bfa;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .chain-badge.solana {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+    }
+    
+    .chain-badge.ethereum {
+      background: rgba(99, 102, 241, 0.1);
+      color: #6366f1;
+    }
+    
+    .chain-badge.base {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+    
+    /* Provider Stats */
+    .provider-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .stat-item {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+    
+    .stat-item-label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-item-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    
+    .stat-item-value.cost {
+      color: #10b981;
+    }
+    
+    .stat-item-value.latency {
+      color: #3b82f6;
+    }
+    
+    /* Provider Description */
+    .provider-description {
+      color: #cbd5e1;
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+    
+    /* Batch Cost Banner */
+    .batch-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 78, 59, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .batch-banner-title {
+      font-weight: 600;
+      color: #10b981;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .batch-banner-details {
+      color: #cbd5e1;
+      font-size: 0.875rem;
+    }
+    
+    .savings {
+      color: #10b981;
+      font-weight: 600;
+    }
+    
+    /* Provider Actions */
+    .provider-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .action-btn {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .action-btn.primary {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+    }
+    
+    .action-btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+    }
+    
+    .action-btn.secondary {
+      background: rgba(139, 92, 246, 0.1);
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .action-btn.secondary:hover {
+      background: rgba(139, 92, 246, 0.2);
+    }
+    
+    /* Methods Modal */
+    .methods-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(139, 92, 246, 0.05);
+      border: 1px solid rgba(139, 92, 246, 0.1);
+      border-radius: 0.5rem;
+      color: #a78bfa;
+      cursor: pointer;
+      font-weight: 500;
+      margin-top: 1rem;
+      transition: all 0.3s;
+    }
+    
+    .methods-btn:hover {
+      background: rgba(139, 92, 246, 0.1);
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+    
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-content {
+      background: #1e293b;
+      border-radius: 1rem;
+      padding: 2rem;
+      max-width: 800px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+    
+    .close-btn:hover {
+      color: #e2e8f0;
+    }
+    
+    .methods-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.5rem;
+    }
+    
+    .method-tag {
+      background: rgba(139, 92, 246, 0.1);
+      color: #cbd5e1;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-family: 'Monaco', monospace;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    /* Loading State */
+    .loading {
+      text-align: center;
+      padding: 4rem;
+      color: #94a3b8;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(139, 92, 246, 0.1);
+      border-top: 3px solid #8b5cf6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .providers-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .provider-stats {
+        grid-template-columns: 1fr;
+      }
+      
+      nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <a href="/" class="logo">⚡ x402-RPC Providers</a>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/api-reference">API Docs</a>
+        <a href="/demo">Demo</a>
+        <a href="https://github.com/x402-labs" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <h1>RPC Providers</h1>
+    <p class="subtitle">
+      Real-time status, pricing, and performance metrics for all available providers
+    </p>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-value" id="total-providers">-</span>
+        <span class="stat-label">Total Providers</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="active-providers">-</span>
+        <span class="stat-label">Active Providers</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="avg-latency">-</span>
+        <span class="stat-label">Avg Latency (ms)</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="cheapest-cost">-</span>
+        <span class="stat-label">Lowest Cost</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="filter-group">
+        <button class="filter-btn active" data-chain="all">All Chains</button>
+        <button class="filter-btn" data-chain="solana">Solana</button>
+        <button class="filter-btn" data-chain="ethereum">Ethereum</button>
+        <button class="filter-btn" data-chain="base">Base</button>
+      </div>
+      
+      <select id="sort-select">
+        <option value="priority">Sort by Priority</option>
+        <option value="cost">Sort by Cost</option>
+        <option value="latency">Sort by Latency</option>
+        <option value="name">Sort by Name</option>
+      </select>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Loading providers...</p>
+    </div>
+
+    <!-- Providers Grid -->
+    <div class="providers-grid" id="providers-grid"></div>
+  </div>
+
+  <!-- Methods Modal -->
+  <div class="modal" id="methods-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Supported Methods</h3>
+        <button class="close-btn" onclick="closeModal()">×</button>
+      </div>
+      <div class="methods-grid" id="methods-grid"></div>
+    </div>
+  </div>
+
+  <script>
+    let allProviders = [];
+    let currentFilter = 'all';
+    let currentSort = 'priority';
+
+    // Fetch providers data
+    async function fetchProviders() {
+      try {
+        const response = await fetch('/providers');
+        const data = await response.json();
+        allProviders = data.providers;
+        updateStats();
+        renderProviders();
+        document.getElementById('loading').style.display = 'none';
+      } catch (error) {
+        console.error('Failed to fetch providers:', error);
+        document.getElementById('loading').innerHTML = '<p>Failed to load providers. Please refresh.</p>';
+      }
+    }
+
+    // Update stats
+    function updateStats() {
+      const activeCount = allProviders.filter(p => p.status === 'active').length;
+      const avgLat = allProviders
+        .filter(p => p.averageLatency)
+        .reduce((sum, p) => sum + p.averageLatency, 0) / activeCount || 0;
+      const cheapest = Math.min(...allProviders.map(p => p.costPerCall));
+
+      document.getElementById('total-providers').textContent = allProviders.length;
+      document.getElementById('active-providers').textContent = activeCount;
+      document.getElementById('avg-latency').textContent = Math.round(avgLat);
+      document.getElementById('cheapest-cost').textContent = '$' + cheapest.toFixed(6);
+    }
+
+    // Render providers
+    function renderProviders() {
+      const filtered = filterProviders();
+      const sorted = sortProviders(filtered);
+      
+      const grid = document.getElementById('providers-grid');
+      grid.innerHTML = sorted.map(provider => createProviderCard(provider)).join('');
+    }
+
+    // Filter providers
+    function filterProviders() {
+      if (currentFilter === 'all') return allProviders;
+      return allProviders.filter(p => p.chains.includes(currentFilter));
+    }
+
+    // Sort providers
+    function sortProviders(providers) {
+      return [...providers].sort((a, b) => {
+        switch (currentSort) {
+          case 'cost':
+            return a.costPerCall - b.costPerCall;
+          case 'latency':
+            return (a.averageLatency || 9999) - (b.averageLatency || 9999);
+          case 'name':
+            return a.name.localeCompare(b.name);
+          case 'priority':
+          default:
+            return (b.priority || 0) - (a.priority || 0);
+        }
+      });
+    }
+
+    // Create provider card HTML
+    function createProviderCard(provider) {
+      const statusClass = provider.status || 'offline';
+      const latency = provider.averageLatency ? Math.round(provider.averageLatency) : 'N/A';
+      const hasBatch = provider.batchCost;
+      const savings = hasBatch ? 
+        (((provider.costPerCall * provider.batchCost.calls - provider.batchCost.price) / (provider.costPerCall * provider.batchCost.calls)) * 100).toFixed(0) 
+        : 0;
+
+      return `
+        <div class="provider-card">
+          <div class="status-indicator ${statusClass}"></div>
+          
+          <div class="provider-header">
+            <div>
+              <h3 class="provider-name">${provider.name}</h3>
+              <div class="provider-chains">
+                ${provider.chains.map(chain => 
+                  `<span class="chain-badge ${chain}">${chain}</span>`
+                ).join('')}
+              </div>
+            </div>
+          </div>
+
+          ${provider.metadata?.description ? `
+            <p class="provider-description">${provider.metadata.description}</p>
+          ` : ''}
+
+          <div class="provider-stats">
+            <div class="stat-item">
+              <div class="stat-item-label">Cost per Call</div>
+              <div class="stat-item-value cost">$${provider.costPerCall.toFixed(6)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-label">Latency</div>
+              <div class="stat-item-value latency">${latency}ms</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-label">Priority</div>
+              <div class="stat-item-value">${provider.priority || 'N/A'}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-label">Status</div>
+              <div class="stat-item-value">${statusClass.toUpperCase()}</div>
+            </div>
+          </div>
+
+          ${hasBatch ? `
+            <div class="batch-banner">
+              <div class="batch-banner-title">💰 Batch Discount Available</div>
+              <div class="batch-banner-details">
+                ${provider.batchCost.calls.toLocaleString()} calls for $${provider.batchCost.price}
+                · Save <span class="savings">${savings}%</span>
+              </div>
+            </div>
+          ` : ''}
+
+          ${provider.metadata?.websiteUrl ? `
+            <a href="${provider.metadata.websiteUrl}" target="_blank" 
+               style="display: block; color: #a78bfa; text-decoration: none; margin-bottom: 1rem; font-size: 0.875rem;">
+              🌐 Visit Website →
+            </a>
+          ` : ''}
+
+          ${provider.metadata?.supportedMethods ? `
+            <button class="methods-btn" onclick="showMethods('${provider.id}', '${provider.name}')">
+              View ${provider.metadata.supportedMethods.length} Supported Methods
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Show methods modal
+    function showMethods(providerId, providerName) {
+      const provider = allProviders.find(p => p.id === providerId);
+      if (!provider || !provider.metadata?.supportedMethods) return;
+
+      document.getElementById('modal-title').textContent = `${providerName} - Supported Methods`;
+      document.getElementById('methods-grid').innerHTML = provider.metadata.supportedMethods
+        .map(method => `<div class="method-tag">${method}</div>`)
+        .join('');
+      
+      document.getElementById('methods-modal').classList.add('active');
+    }
+
+    // Close modal
+    function closeModal() {
+      document.getElementById('methods-modal').classList.remove('active');
+    }
+
+    // Event listeners
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.chain;
+        renderProviders();
+      });
+    });
+
+    document.getElementById('sort-select').addEventListener('change', (e) => {
+      currentSort = e.target.value;
+      renderProviders();
+    });
+
+    // Close modal on background click
+    document.getElementById('methods-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'methods-modal') {
+        closeModal();
+      }
+    });
+
+    // Initialize
+    fetchProviders();
+    
+    // Refresh every 30 seconds
+    setInterval(fetchProviders, 30000);
+  </script>
+</body>
+</html>
+
