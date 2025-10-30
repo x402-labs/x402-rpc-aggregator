@@ -90,62 +90,43 @@ export class X402Agent {
     tx.recentBlockhash = blockhash;
     tx.feePayer = payer;
 
-    // Sign transaction
+    // Sign transaction with wallet
     const signedTx = await wallet.signTransaction(tx);
-    
-    // Send and confirm transaction via backend's Helius RPC
-    try {
-      const signature = await this.connection.sendRawTransaction(signedTx.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed',
-        maxRetries: 3,
-      });
+    const serializedTx = signedTx.serialize();
+    const txBase64 = bs58.encode(serializedTx);
 
-      console.log(`📤 Transaction sent via Helius: ${signature}`);
-      console.log(`🔗 Explorer: https://orb.helius.dev/tx/${signature}`);
+    console.log(`✅ Transaction signed and serialized`);
+    console.log(`📦 Transaction size: ${serializedTx.length} bytes`);
 
-      // Confirm transaction via backend's Helius RPC
-      const confirmation = await this.connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight,
-      }, 'confirmed');
+    // Sign intent message
+    const intentMsg = new TextEncoder().encode(
+      JSON.stringify({
+        amount: invoice.amount,
+        to: invoice.to,
+        nonce: invoice.nonce,
+        resource: invoice.resource,
+      })
+    );
+    const intentSig = await wallet.signMessage(intentMsg);
+    const signedIntent = {
+      publicKey: payer.toBase58(),
+      signature: bs58.encode(intentSig),
+    };
 
-      if (confirmation.value.err) {
-        throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-      }
+    console.log(`✅ Payment intent signed`);
+    console.log(`📤 Sending signed transaction to backend for settlement...`);
 
-      console.log(`✅ Transaction confirmed on-chain!`);
-
-      // Sign intent message
-      const intentMsg = new TextEncoder().encode(
-        JSON.stringify({
-          amount: invoice.amount,
-          to: invoice.to,
-          nonce: invoice.nonce,
-          resource: invoice.resource,
-        })
-      );
-      const intentSig = await wallet.signMessage(intentMsg);
-      const signedIntent = {
-        publicKey: payer.toBase58(),
-        signature: bs58.encode(intentSig),
-      };
-
-      return {
-        paymentPayload: {
-          signedIntent,
-          txHash: signature,
-          network: 'solana-mainnet',
-        },
-        paymentRequirements: {
-          amount: invoice.amount,
-          recipient: invoice.to,
-        },
-      };
-    } catch (error: any) {
-      console.error('❌ Transaction failed:', error);
-      throw new Error(`Failed to send transaction: ${error.message}`);
-    }
+    // Return signed transaction for backend to settle
+    return {
+      paymentPayload: {
+        signedIntent,
+        txBase64,  // Backend will broadcast this
+        network: 'solana-mainnet',
+      },
+      paymentRequirements: {
+        amount: invoice.amount,
+        recipient: invoice.to,
+      },
+    };
   }
 }
