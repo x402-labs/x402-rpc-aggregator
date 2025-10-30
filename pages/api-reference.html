@@ -445,7 +445,7 @@
         <p>Make your first RPC call in less than 5 minutes.</p>
         
         <h3>1. Make an RPC Request</h3>
-<pre><code>curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
+<pre><code>curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "getSlot",
@@ -466,7 +466,7 @@
         <h3>3. Pay and Retry (Automatic with SDK)</h3>
 <pre><code>import { X402Agent } from './x402-client';
 
-const agent = new X402Agent('https://x402-rpc-aggregator.up.railway.app');
+const agent = new X402Agent('https://x402labs.cloud/');
 const result = await agent.callRPC('getSlot', [], 'solana');
 
 console.log('Slot:', result.result);
@@ -586,7 +586,7 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
           
           <p>Check service health and provider status.</p>
           
-<pre><code>curl https://x402-rpc-aggregator.up.railway.app/health</code></pre>
+<pre><code>curl https://x402labs.cloud//health</code></pre>
 
           <h3>Response</h3>
 <pre><code>{
@@ -634,7 +634,7 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
             </tbody>
           </table>
           
-<pre><code>curl 'https://x402-rpc-aggregator.up.railway.app/providers?chain=solana'</code></pre>
+<pre><code>curl 'https://x402labs.cloud//providers?chain=solana'</code></pre>
 
           <h3>Response</h3>
 <pre><code>{
@@ -718,7 +718,7 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
         <p>Purchase multiple calls upfront for discounted pricing (20% savings).</p>
         
         <h3>Get Batch Pricing</h3>
-<pre><code>curl 'https://x402-rpc-aggregator.up.railway.app/batch-pricing?chain=solana'</code></pre>
+<pre><code>curl 'https://x402labs.cloud/batch-pricing?chain=solana'</code></pre>
 
         <h3>Response</h3>
 <pre><code>{
@@ -795,7 +795,7 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
 <pre><code>import { X402Agent } from './lib/x402-client';
 
 // Initialize agent
-const agent = new X402Agent('https://x402-rpc-aggregator.up.railway.app');
+const agent = new X402Agent('https://x402labs.cloud/');
 
 // Make RPC call (handles payment automatically)
 const result = await agent.callRPC('getSlot', [], 'solana');
@@ -823,7 +823,7 @@ console.log('Payment tx:', result.x402.paymentInfo.txHash);</code></pre>
 <pre><code>from x402_client import X402Agent
 
 # Initialize
-agent = X402Agent('https://x402-rpc-aggregator.up.railway.app')
+agent = X402Agent('https://x402labs.cloud/')
 
 # Make call
 result = agent.call_rpc('getSlot', [], chain='solana')
@@ -836,7 +836,7 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
         <h2>cURL Examples</h2>
         
         <h3>Solana - Get Slot</h3>
-<pre><code>curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
+<pre><code>curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "getSlot",
@@ -844,7 +844,7 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
   }'</code></pre>
 
         <h3>Ethereum - Block Number</h3>
-<pre><code>curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
+<pre><code>curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "eth_blockNumber",
@@ -852,7 +852,7 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
   }'</code></pre>
 
         <h3>With Custom Routing</h3>
-<pre><code>curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
+<pre><code>curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "getSlot",

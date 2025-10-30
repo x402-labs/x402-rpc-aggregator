@@ -19,7 +19,7 @@ export const swaggerDocument = {
   },
   servers: [
     {
-      url: 'https://x402-rpc-aggregator.up.railway.app',
+      url: 'https://x402labs.cloud/',
       description: 'Production server',
     },
     {

@@ -260,7 +260,7 @@ GET /health
 ```typescript
 import { X402Agent } from './lib/x402-client';
 
-const agent = new X402Agent('https://x402-rpc-aggregator.up.railway.app');
+const agent = new X402Agent('https://x402labs.cloud/');
 
 // Agent will automatically handle 402 challenges and payments
 const result = await agent.callRPC('getSlot', [], 'solana');
@@ -272,7 +272,7 @@ console.log('Current slot:', result.result);
 ```python
 from x402 import Agent
 
-agent = Agent('https://x402-rpc-aggregator.up.railway.app')
+agent = Agent('https://x402labs.cloud/')
 result = agent.call_rpc('getSlot', [], chain='solana')
 print(f"Current slot: {result['result']}")
 ```
@@ -350,7 +350,7 @@ print(f"Current slot: {result['result']}")
 
 ```bash
 # 1. Get invoice
-curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
+curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -d '{"method":"getSlot","chain":"solana"}'
 
@@ -359,7 +359,7 @@ curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
 # 2. (In production, pay via wallet)
 
 # 3. Retry with payment proof
-curl -X POST https://x402-rpc-aggregator.up.railway.app/rpc \
+curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -H "x402-payment: {\"paymentPayload\":..., \"paymentRequirements\":...}" \
   -d '{"method":"getSlot","chain":"solana"}'
@@ -430,7 +430,7 @@ MIT © x402-labs
 
 ## 🔗 Links
 
-- **Live Demo**: https://x402-rpc-aggregator.up.railway.app
+- **Live Demo**: https://x402labs.cloud/
 - **Triton.one**: https://triton.one
 - **x402 Protocol**: https://github.com/x402-protocol
 - **Support**: GitHub Issues
