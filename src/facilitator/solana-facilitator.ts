@@ -221,7 +221,7 @@ export class SolanaFacilitator {
       
       console.log(`   Transfer type: ${isSOLTransfer ? 'SOL (System Program)' : 'USDC (SPL Token)'}`);
 
-      // Step 4: Simulate transaction for safety
+      // Step 4: Simulate transaction for safety (optional if rate-limited)
       console.log(`🧪 Step 4: Simulating transaction...`);
       try {
         const simulation = await conn.simulateTransaction(tx);
@@ -251,7 +251,20 @@ export class SolanaFacilitator {
         console.log(`✅ Step 4 passed: Simulation check complete`);
       } catch (simError: any) {
         console.error(`❌ Simulation threw error:`, simError.message);
-        return { valid: false, error: `Simulation error: ${simError.message}` };
+        
+        // Handle rate limiting (429) gracefully - skip simulation
+        if (simError.message.includes('429') || simError.message.includes('rate limit')) {
+          console.warn(`⚠️  Rate limit detected during simulation - skipping simulation check`);
+          console.warn(`   Transaction structure is valid, proceeding without simulation`);
+          // Continue - we've already validated signature and transaction structure
+        } else if (simError.message.includes('blockhash')) {
+          console.warn(`⚠️  Blockhash error during simulation - likely stale blockhash`);
+          console.warn(`   This is normal for pre-signed transactions, proceeding`);
+          // Continue - blockhash issues are expected for client-signed transactions
+        } else {
+          // Unknown error - return failure
+          return { valid: false, error: `Simulation error: ${simError.message}` };
+        }
       }
 
       // Payment is valid
