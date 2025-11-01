@@ -128,31 +128,22 @@
   </script>
   <!-- Add runtime SPL loader with check -->
   <script>
-    let splLoaded = false;
-    const loadSPL = async () => {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const script = document.createElement('script');
-          script.src = 'https://raw.githubusercontent.com/solana-labs/solana-program-library/master/token/js/dist/index.iife.min.js';
-          script.onload = () => {
-            splLoaded = true;
-            console.log('✅ SPL loaded on attempt ' + attempt);
-            const payaiOption = document.querySelector('#facilitator option[value="payai"]');
-            if (payaiOption) {
-              payaiOption.disabled = false;
-              payaiOption.text = 'PayAI (USDC)';
-            }
-          };
-          script.onerror = () => { if (attempt === 3) console.error('❌ SPL failed after 3 attempts'); };
-          document.head.appendChild(script);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for load
-          if (splLoaded) break;
-        } catch (e) {
-          console.error('SPL retry ' + attempt + ' failed:', e);
-        }
+    // PayAI SDK is integrated on the backend - no SPL Token library needed on frontend!
+    // The backend handles all PayAI payment processing via the official x402-solana SDK
+    
+    console.log('✅ PayAI option enabled (backend SDK integration)');
+    console.log('   PayAI Treasury: 26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR');
+    console.log('   Facilitator URL: https://facilitator.payai.network');
+    
+    // Enable PayAI option immediately - backend handles everything
+    document.addEventListener('DOMContentLoaded', () => {
+      const payaiOption = document.querySelector('#facilitator option[value="payai"]');
+      if (payaiOption) {
+        payaiOption.disabled = false;
+        payaiOption.text = 'PayAI Network (USDC on Solana)';
+        console.log('✅ PayAI Network option ready');
       }
-    };
-    loadSPL();
+    });
   </script>
   
   <!-- x402 Labs theme (design.svg palette) -->
@@ -212,10 +203,10 @@
         <div class="bg-gray-800 p-6 rounded-xl">
           <h2 class="text-xl font-semibold mb-4">2. Make RPC Call</h2>
           <select id="facilitator" class="w-full p-2 bg-gray-700 rounded mb-3">
-            <option value="payai" disabled>PayAI (USDC) - Loading...</option>
+            <option value="payai">PayAI Network (USDC on Solana)</option>
             <option value="xlab" selected>X-Labs solana network (SOL)</option>
           </select>
-          <p class="text-xs text-gray-400 mb-2">💡 X-Labs uses SOL (no SPL-Token needed), PayAI uses USDC</p>
+          <p class="text-xs text-gray-400 mb-2">💡 X-Labs uses SOL, PayAI uses USDC via PayAI Network facilitator</p>
           <select id="method" class="w-full p-2 bg-gray-700 rounded mb-3">
             <option value="getSlot">getSlot (Solana) - no params needed</option>
             <option value="getBalance">getBalance (Solana) - needs address</option>
@@ -281,7 +272,8 @@
           <span class="text-xs">${wallet.publicKey.toBase58().slice(0,8)}...</span><br>
           <span class="text-sm ${balanceCheck.solSufficient ? 'text-green-400' : 'text-orange-400'}">SOL: ${balanceCheck.solCurrent}</span><br>
           <span class="text-sm ${balanceCheck.usdcSufficient ? 'text-green-400' : 'text-orange-400'}">USDC: ${balanceCheck.usdcCurrent}</span>
-          ${!balanceCheck.usdcSufficient ? '<br><span class="text-red-400 text-xs">⚠️ Low USDC</span>' : ''}
+          ${!balanceCheck.solSufficient ? '<br><span class="text-orange-400 text-xs">⚠️ Low SOL (for X-Labs)</span>' : ''}
+          ${!balanceCheck.usdcSufficient ? '<br><span class="text-orange-400 text-xs">⚠️ Low USDC (for PayAI)</span>' : ''}
         `;
       } catch (err) {
         document.getElementById('wallet').innerHTML = `<span class="text-red-400">❌ ${err.message}</span>`;
@@ -453,32 +445,41 @@
         const solBalanceSOL = solBalance / 1e9;
         const minSOL = 0.001;
 
-        // USDC balance (get ATA and balance) - check if splToken is available
-        if (!window.splToken || typeof window.splToken.getAssociatedTokenAddress !== 'function') {
-          console.warn('⚠️ SPL-Token not loaded, skipping USDC check');
-          return {
-            solSufficient: solBalanceSOL >= minSOL,
-            usdcSufficient: true, // Can't check, assume OK
-            solCurrent: `${solBalanceSOL.toFixed(4)} SOL`,
-            usdcCurrent: 'N/A (SPL not loaded)'
-          };
-        }
+        // USDC balance check (for PayAI)
+        // Note: PayAI Network facilitator handles USDC transfers on backend
+        // Frontend just shows balance for user information
+        console.log('💰 Checking USDC balance (PayAI Network)');
         
-        const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-        const usdcATA = await window.splToken.getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
+        const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+        
+        // Calculate Associated Token Account (ATA) address manually
+        // This avoids needing the SPL Token library
+        const [ata] = await PublicKey.findProgramAddress(
+          [
+            wallet.publicKey.toBuffer(),
+            new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA').toBuffer(),
+            new PublicKey(USDC_MINT).toBuffer()
+          ],
+          new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL')
+        );
+        
         const usdcRes = await fetch(SOLANA_RPC_PROXY, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: 'getTokenAccountBalance', params: [usdcATA.toBase58()] })
+          body: JSON.stringify({ 
+            method: 'getTokenAccountBalance', 
+            params: [ata.toBase58()] 
+          })
         });
+        
         const usdcData = await usdcRes.json();
         let usdcBalance = 0;
         if (usdcData.result?.value) {
           usdcBalance = usdcData.result.value.uiAmount || 0;
         } else {
-          console.warn('USDC ATA not found - balance 0');
+          console.warn('USDC ATA not found - balance 0 (account may not exist yet)');
         }
-        const minUSDC = 0.02; // Example min for payments
+        const minUSDC = 0.02; // Minimum USDC for payments
 
         return {
           solSufficient: solBalanceSOL >= minSOL,
@@ -594,7 +595,8 @@
 
     async function buildPayment(paymentDetails, chain) {
       try {
-        console.log('💰 Building for chain:', chain);
+        console.log('💰 Building payment for chain:', chain);
+        console.log('   Facilitator:', document.getElementById('facilitator').value);
         
       if (chain === 'base') {
           const sig = await window.ethereum.request({
@@ -613,6 +615,49 @@
         const facilitator = document.getElementById('facilitator').value;
         const { Transaction, PublicKey, SystemProgram } = window.solanaWeb3;
 
+        // === PayAI NETWORK (USDC on Solana) ===
+        if (facilitator === 'payai') {
+          console.log('💳 Using PayAI Network facilitator');
+          console.log('   Treasury: 26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR');
+          console.log('   Network: solana-mainnet');
+          
+          // PayAI uses signed payment intent - backend handles everything via PayAI SDK
+          const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
+          const paymentIntent = {
+            amount: parseFloat(paymentDetails.maxAmountRequired),
+            to: paymentDetails.payTo,
+            nonce,
+            resource: paymentDetails.resource || '/rpc',
+            network: 'solana-mainnet',
+            treasury: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR'
+          };
+          
+          console.log('📝 Signing payment intent:', paymentIntent);
+          const intentMsg = new TextEncoder().encode(JSON.stringify(paymentIntent));
+          const intentSig = await wallet.signMessage(intentMsg, 'utf8');
+          
+          console.log('✅ Payment intent signed');
+          
+          return {
+            paymentPayload: {
+              signedIntent: {
+                publicKey: wallet.publicKey.toBase58(),
+                signature: bs58.encode(intentSig.signature)
+              },
+              network: paymentDetails.network,
+              facilitator: 'payai',
+              treasury: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR'
+            },
+            paymentRequirements: {
+              amount: parseFloat(paymentDetails.maxAmountRequired),
+              recipient: paymentDetails.payTo,
+              nonce,
+              network: 'solana-mainnet'
+            }
+          };
+        }
+        
+        // === X-LABS (SOL) ===
         if (facilitator === 'xlab') {
           console.log('📌 Building SOL transfer transaction for X-Labs...');
           
@@ -743,127 +788,6 @@
               nonce: paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`
             },
           };
-        } else {
-          if (splLoaded) {
-            console.log('💳 Using USDC for PayAI');
-            const splToken = window.splToken;
-            const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-            const amountBigInt = BigInt(Math.floor(parseFloat(paymentDetails.maxAmountRequired) * 1e6));
-            let blockhashData;
-            const isTriton = paymentDetails.extra?.provider?.toLowerCase().includes('triton');
-            for (let attempt = 1; attempt <= (isTriton ? 3 : 1); attempt++) {
-              try {
-                const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ method: 'getLatestBlockhash', params: [] })
-                });
-                blockhashData = await blockhashRes.json();
-                if (blockhashData.result?.value?.blockhash) break;
-              } catch (e) {
-                if (attempt === (isTriton ? 3 : 1)) throw new Error('Failed to get blockhash');
-                await new Promise(resolve => setTimeout(resolve, 500));
-              }
-            }
-            const tx = new Transaction();
-            tx.recentBlockhash = blockhashData.result.value.blockhash;
-            tx.feePayer = wallet.publicKey;
-            const fromATA = await splToken.getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
-            await getOrCreateATA(tx, wallet.publicKey, USDC_MINT, wallet.publicKey, fromATA);
-            const toATA = await splToken.getAssociatedTokenAddress(USDC_MINT, new PublicKey(paymentDetails.payTo));
-            await getOrCreateATA(tx, new PublicKey(paymentDetails.payTo), USDC_MINT, wallet.publicKey, toATA);
-            tx.add(splToken.createTransferInstruction(fromATA, toATA, wallet.publicKey, amountBigInt));
-            const signed = await wallet.signTransaction(tx);
-            const serialized = signed.serialize();
-            const txBase64 = bs58.encode(serialized);
-            const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
-            const intentMsg = new TextEncoder().encode(JSON.stringify({ 
-              amount: parseFloat(paymentDetails.maxAmountRequired), 
-              to: paymentDetails.payTo, 
-              nonce, 
-              resource: paymentDetails.resource || '/rpc' 
-            }));
-            const intentSig = await wallet.signMessage(intentMsg, 'utf8');
-            return {
-              paymentPayload: {
-                signedIntent: { publicKey: wallet.publicKey.toBase58(), signature: bs58.encode(intentSig.signature) },
-                txBase64,
-                network: paymentDetails.network
-              },
-              paymentRequirements: { 
-                amount: parseFloat(paymentDetails.maxAmountRequired), 
-                recipient: paymentDetails.payTo, 
-                nonce 
-              },
-            };
-          } else {
-            console.warn('⚠️ SPL not loaded - Using SOL for PayAI');
-            let blockhashData;
-            const isTriton = paymentDetails.extra?.provider?.toLowerCase().includes('triton');
-            for (let attempt = 1; attempt <= (isTriton ? 3 : 1); attempt++) {
-              try {
-                const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ method: 'getLatestBlockhash', params: [] })
-                });
-                blockhashData = await blockhashRes.json();
-                if (blockhashData.result?.value?.blockhash) break;
-              } catch (e) {
-                if (attempt === (isTriton ? 3 : 1)) throw new Error('Failed to get blockhash');
-                await new Promise(resolve => setTimeout(resolve, 500));
-              }
-            }
-            const tx = new Transaction();
-            tx.recentBlockhash = blockhashData.result.value.blockhash;
-            tx.feePayer = wallet.publicKey;
-            
-            // Build transfer instruction MANUALLY (same as self-hosted)
-            const lamports = 1000;
-            const transferInstructionData = new Uint8Array(12);
-            transferInstructionData[0] = 2;
-            transferInstructionData[1] = 0;
-            transferInstructionData[2] = 0;
-            transferInstructionData[3] = 0;
-            const lamportsView = new DataView(transferInstructionData.buffer, 4, 8);
-            lamportsView.setBigUint64(0, BigInt(lamports), true);
-            
-            const { TransactionInstruction } = window.solanaWeb3;
-            const transferIx = new TransactionInstruction({
-              keys: [
-                { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
-                { pubkey: new PublicKey(paymentDetails.payTo), isSigner: false, isWritable: true }
-              ],
-              programId: new PublicKey('11111111111111111111111111111111'),
-              data: transferInstructionData
-            });
-            
-            tx.add(transferIx);
-            const signed = await wallet.signTransaction(tx);
-            const serialized = signed.serialize();
-            const txBase64 = bs58.encode(serialized);
-            const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
-            const intentMsg = new TextEncoder().encode(JSON.stringify({ 
-              amount: parseFloat(paymentDetails.maxAmountRequired), 
-              to: paymentDetails.payTo, 
-              nonce, 
-              resource: paymentDetails.resource || '/rpc' 
-            }));
-            const intentSig = await wallet.signMessage(intentMsg, 'utf8');
-            return {
-              paymentPayload: {
-                signedIntent: { publicKey: wallet.publicKey.toBase58(), signature: bs58.encode(intentSig.signature) },
-          txBase64,
-          network: paymentDetails.network,
-                paymentType: 'SOL'
-              },
-              paymentRequirements: { 
-                amount: parseFloat(paymentDetails.maxAmountRequired), 
-                recipient: paymentDetails.payTo, 
-                nonce 
-              },
-            };
-          }
         }
       } catch (error) {
         console.error('❌ Build failed:', error);
@@ -871,23 +795,8 @@
       }
     }
 
-    async function getOrCreateATA(tx, owner, mint, payer, ataAddress) {
-      try {
-        const ataRes = await fetch(SOLANA_RPC_PROXY, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: 'getAccountInfo', params: [ataAddress.toBase58(), { encoding: 'jsonParsed' }] })
-        });
-        const ataData = await ataRes.json();
-        if (!ataData.result.value) {
-          tx.add(window.splToken.createAssociatedTokenAccountInstruction(payer, ataAddress, owner, mint));
-        }
-      } catch (e) {
-        console.warn('ATA check failed, attempting creation:', e);
-        tx.add(window.splToken.createAssociatedTokenAccountInstruction(payer, ataAddress, owner, mint));
-      }
-      return ataAddress;
-    }
+    // Note: PayAI Network backend handles all USDC transfers via the PayAI SDK
+    // Frontend only needs to sign payment intent messages
   </script>
 </body>
 </html>
