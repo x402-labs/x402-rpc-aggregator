@@ -268,10 +268,28 @@ function createX402Response(
     }
   };
 
+  // Convert amount to base unit (lamports for SOL, wei for ETH, etc.)
+  const getAmountInBaseUnit = (amount: number, asset: string): string => {
+    switch (asset) {
+      case 'SOL':
+        // 1 SOL = 1,000,000,000 lamports (1e9)
+        return Math.floor(amount * 1e9).toString();
+      case 'ETH':
+        // 1 ETH = 1,000,000,000,000,000,000 wei (1e18)
+        return Math.floor(amount * 1e18).toString();
+      case 'USDC':
+        // 1 USDC = 1,000,000 micro-USDC (1e6)
+        return Math.floor(amount * 1e6).toString();
+      default:
+        // Default to 9 decimals (SOL standard)
+        return Math.floor(amount * 1e9).toString();
+    }
+  };
+
   const accepts: X402Accepts = {
     scheme: 'exact',
     network,
-    maxAmountRequired: provider.costPerCall.toString(),
+    maxAmountRequired: getAmountInBaseUnit(provider.costPerCall, asset),
     resource: `https://x402labs.cloud${resource}`, // Full URL required by x402scan
     description: `RPC access via ${provider.name} for ${chain}`,
     mimeType: 'application/json',
