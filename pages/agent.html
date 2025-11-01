@@ -295,12 +295,18 @@
           });
 
           if (res.status === 402) {
-            const { invoice } = await res.json();
-            paid += invoice.amount;
+            // x402scan-compliant format
+            const x402Response = await res.json();
+            if (!x402Response.accepts || x402Response.accepts.length === 0) {
+              throw new Error('Invalid x402 response: no payment options');
+            }
+            
+            const paymentDetails = x402Response.accepts[0];
+            paid += parseFloat(paymentDetails.maxAmountRequired);
             updateStats();
-            log(`402: Pay $${invoice.amount} via ${invoice.network}`);
+            log(`402: Pay $${paymentDetails.maxAmountRequired} via ${paymentDetails.network}`);
 
-            const payment = await payWithX402(invoice, task.chain, wallet);
+            const payment = await payWithX402(paymentDetails, task.chain, wallet);
             const retry = await fetch(API, {
               method: 'POST',
               headers: {
@@ -396,17 +402,20 @@
       }
     }
 
-    async function payWithX402(invoice, chain, wallet) {
+    async function payWithX402(paymentDetails, chain, wallet) {
       try {
         log('💰 Building payment for ' + chain + '...');
         
         if (chain === 'base') {
           const { signMessage } = window.ethereum;
-          const msg = new TextEncoder().encode(JSON.stringify(invoice));
+          const msg = new TextEncoder().encode(JSON.stringify(paymentDetails));
           const sig = await signMessage(msg);
           return {
             paymentPayload: { signedIntent: { signature: bs58.encode(sig) } },
-            paymentRequirements: { amount: invoice.amount, recipient: invoice.to },
+            paymentRequirements: { 
+              amount: parseFloat(paymentDetails.maxAmountRequired), 
+              recipient: paymentDetails.payTo 
+            },
           };
         }
 
@@ -443,7 +452,7 @@
         const lamports = 10000000;
         tx.add(SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
-          toPubkey: new PublicKey(invoice.to),
+          toPubkey: new PublicKey(paymentDetails.payTo),
           lamports: lamports  // v1.20.3 handles this correctly
         }));
 
@@ -489,12 +498,12 @@
         }
 
         // Sign intent message  
-        const nonce = invoice.nonce || `${Date.now()}-${Math.random()}`;
+        const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
         const intentMessage = JSON.stringify({
-          amount: invoice.amount,
-          to: invoice.to,
+          amount: parseFloat(paymentDetails.maxAmountRequired),
+          to: paymentDetails.payTo,
           nonce: nonce,
-          resource: invoice.resource || '/rpc'
+          resource: paymentDetails.resource || '/rpc'
         });
         
         log('✍️ Signing payment intent...');
@@ -534,12 +543,12 @@
               signature: signatureBase58
             },
             txBase64,
-            network: 'solana-mainnet',
+            network: paymentDetails.network,
             paymentType: 'SOL'  // Important: tell server this is SOL not USDC
           },
           paymentRequirements: { 
-            amount: invoice.amount, 
-            recipient: invoice.to,
+            amount: parseFloat(paymentDetails.maxAmountRequired), 
+            recipient: paymentDetails.payTo,
             nonce: nonce
           },
         };

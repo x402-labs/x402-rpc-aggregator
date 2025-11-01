@@ -95,3 +95,49 @@ export interface BatchPayment {
   batchId: string;
 }
 
+/**
+ * x402scan-compliant types
+ * Based on: https://www.x402scan.com/resources/register
+ */
+
+export interface FieldDef {
+  type?: string;
+  required?: boolean | string | string[];
+  description?: string;
+  enum?: string[];
+  properties?: Record<string, FieldDef>; // for nested objects
+}
+
+export interface OutputSchema {
+  input?: {
+    type: string;
+    method?: string;
+    bodyType?: 'json' | 'form-data' | 'multipart-form-data' | 'text' | 'binary';
+    queryParams?: Record<string, FieldDef>;
+    bodyFields?: Record<string, FieldDef>;
+    headerFields?: Record<string, FieldDef>;
+  };
+  output?: Record<string, any>;
+}
+
+export interface X402Accepts {
+  scheme: 'exact';
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  payTo: string;
+  maxTimeoutSeconds: number;
+  asset: string;
+  outputSchema?: OutputSchema;
+  extra?: Record<string, any>;
+}
+
+export interface X402Response {
+  x402Version: number;
+  error?: string;
+  accepts?: X402Accepts[];
+  payer?: string;
+}
+

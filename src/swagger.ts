@@ -137,22 +137,112 @@ export const swaggerDocument = {
             },
           },
           '402': {
-            description: 'Payment Required',
+            description: 'Payment Required - x402scan compliant response',
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
+                  required: ['x402Version', 'accepts'],
                   properties: {
-                    invoice: {
-                      type: 'object',
-                      properties: {
-                        amount: { type: 'number', example: 0.0001 },
-                        to: { type: 'string', description: 'Recipient wallet address' },
-                        network: { type: 'string', example: 'solana-mainnet' },
-                        resource: { type: 'string', example: '/rpc' },
-                        nonce: { type: 'string' },
-                        description: { type: 'string' },
+                    x402Version: {
+                      type: 'number',
+                      example: 1,
+                      description: 'x402 protocol version',
+                    },
+                    error: {
+                      type: 'string',
+                      description: 'Optional error message',
+                    },
+                    accepts: {
+                      type: 'array',
+                      description: 'Array of accepted payment methods',
+                      items: {
+                        type: 'object',
+                        required: ['scheme', 'network', 'maxAmountRequired', 'resource', 'description', 'mimeType', 'payTo', 'maxTimeoutSeconds', 'asset'],
+                        properties: {
+                          scheme: {
+                            type: 'string',
+                            enum: ['exact'],
+                            description: 'Payment scheme (exact amount required)',
+                          },
+                          network: {
+                            type: 'string',
+                            example: 'solana-mainnet',
+                            description: 'Blockchain network',
+                          },
+                          maxAmountRequired: {
+                            type: 'string',
+                            example: '0.0001',
+                            description: 'Maximum payment amount required (as string)',
+                          },
+                          resource: {
+                            type: 'string',
+                            example: '/rpc',
+                            description: 'Resource endpoint',
+                          },
+                          description: {
+                            type: 'string',
+                            example: 'RPC access via Triton One for solana',
+                            description: 'Human-readable description',
+                          },
+                          mimeType: {
+                            type: 'string',
+                            example: 'application/json',
+                            description: 'Response content type',
+                          },
+                          payTo: {
+                            type: 'string',
+                            description: 'Recipient wallet address',
+                          },
+                          maxTimeoutSeconds: {
+                            type: 'number',
+                            example: 30,
+                            description: 'Maximum timeout for request',
+                          },
+                          asset: {
+                            type: 'string',
+                            example: 'SOL',
+                            description: 'Payment asset (SOL, ETH, USDC)',
+                          },
+                          outputSchema: {
+                            type: 'object',
+                            description: 'Optional schema describing input/output expectations',
+                            properties: {
+                              input: {
+                                type: 'object',
+                                properties: {
+                                  type: { type: 'string', example: 'http' },
+                                  method: { type: 'string', example: 'POST' },
+                                  bodyType: { type: 'string', example: 'json' },
+                                  bodyFields: { type: 'object' },
+                                },
+                              },
+                              output: { type: 'object' },
+                            },
+                          },
+                          extra: {
+                            type: 'object',
+                            description: 'Additional provider metadata',
+                            properties: {
+                              provider: { type: 'string' },
+                              providerId: { type: 'string' },
+                              facilitator: { type: 'object' },
+                              batchOption: {
+                                type: 'object',
+                                properties: {
+                                  calls: { type: 'number' },
+                                  price: { type: 'number' },
+                                  savings: { type: 'string' },
+                                },
+                              },
+                            },
+                          },
+                        },
                       },
+                    },
+                    payer: {
+                      type: 'string',
+                      description: 'Optional payer wallet address',
                     },
                   },
                 },

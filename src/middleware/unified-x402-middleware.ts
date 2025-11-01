@@ -12,7 +12,7 @@ import { NextFunction, Request, Response } from 'express';
 import { FacilitatorManager } from '../facilitator/facilitator-manager';
 import { IntelligentRouter } from '../router';
 import { ProviderRegistry } from '../providers/provider-registry';
-import { BatchPayment } from '../types';
+import { BatchPayment, X402Response, X402Accepts, RPCProvider } from '../types';
 
 export interface X402Request extends Request {
   x402?: {
@@ -81,9 +81,10 @@ export function createUnifiedX402Middleware(
             console.log(`🎫 Batch payment: ${batch.callsRemaining}/${batch.totalCalls} remaining`);
             return next();
           } else {
+            const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager);
             return res.status(402).json({
+              ...x402Response,
               error: 'Batch expired or depleted',
-              invoice: createInvoice(provider, chain, req.originalUrl),
             });
           }
         } catch (err: any) {
@@ -93,26 +94,8 @@ export function createUnifiedX402Middleware(
 
       // === 402 CHALLENGE ===
       if (!paymentHeader) {
-        const invoice = createInvoice(provider, chain, req.originalUrl);
-        
-        // Include facilitator info
-        const facilitatorInfo = facilitatorManager.getInfo();
-        (invoice as any).facilitator = {
-          primary: facilitatorInfo.primary.name,
-          type: facilitatorInfo.primary.type,
-          fallback: facilitatorInfo.fallback?.name,
-        };
-
-        // Include batch option
-        if (provider.batchCost) {
-          (invoice as any).batchOption = {
-            calls: provider.batchCost.calls,
-            price: provider.batchCost.price,
-            savings: `${(((provider.costPerCall * provider.batchCost.calls - provider.batchCost.price) / (provider.costPerCall * provider.batchCost.calls)) * 100).toFixed(1)}%`,
-          };
-        }
-
-        return res.status(402).json({ invoice });
+        const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager);
+        return res.status(402).json(x402Response);
       }
 
       // === PAYMENT VERIFICATION & SETTLEMENT ===
@@ -230,18 +213,147 @@ export function createUnifiedX402Middleware(
 }
 
 /**
- * Create payment invoice
+ * Create x402scan-compliant payment response
+ * Based on: https://www.x402scan.com/resources/register
  */
-function createInvoice(provider: any, chain: string, resource: string) {
-  return {
-    amount: provider.costPerCall,
-    to: process.env.X402_WALLET || 'WALLET_NOT_CONFIGURED',
-    network: chain === 'solana' ? 'solana-mainnet' : `${chain}-mainnet`,
+function createX402Response(
+  provider: RPCProvider,
+  chain: string,
+  resource: string,
+  facilitatorManager: FacilitatorManager
+): X402Response {
+  const facilitatorInfo = facilitatorManager.getInfo();
+  
+  // Determine network and asset based on chain
+  const getChainInfo = (chain: string) => {
+    switch (chain) {
+      case 'solana':
+        return { network: 'solana-mainnet', asset: 'SOL' };
+      case 'ethereum':
+        return { network: 'ethereum-mainnet', asset: 'ETH' };
+      case 'base':
+        return { network: 'base-mainnet', asset: 'ETH' };
+      default:
+        return { network: `${chain}-mainnet`, asset: 'SOL' };
+    }
+  };
+
+  const { network, asset } = getChainInfo(chain);
+
+  // Get supported RPC methods based on chain
+  const getSupportedMethods = (chain: string): string[] => {
+    if (chain === 'solana') {
+      return [
+        'getSlot',
+        'getBalance',
+        'getBlockHeight',
+        'getLatestBlockhash',
+        'sendTransaction',
+        'getTransaction',
+        'getAccountInfo',
+        'getBlock',
+        'getBlockTime',
+        'getProgramAccounts',
+      ];
+    } else {
+      return [
+        'eth_blockNumber',
+        'eth_getBalance',
+        'eth_sendTransaction',
+        'eth_getTransactionByHash',
+        'eth_getBlockByNumber',
+        'eth_call',
+      ];
+    }
+  };
+
+  const accepts: X402Accepts = {
+    scheme: 'exact',
+    network,
+    maxAmountRequired: provider.costPerCall.toString(),
     resource,
-    nonce: `${Date.now()}-${Math.random()}`,
-    description: `RPC access via ${provider.name}`,
-    provider: provider.name,
-    providerId: provider.id,
+    description: `RPC access via ${provider.name} for ${chain}`,
+    mimeType: 'application/json',
+    payTo: process.env.X402_WALLET || 'WALLET_NOT_CONFIGURED',
+    maxTimeoutSeconds: 30,
+    asset,
+    
+    // Optional: Output schema for better x402scan integration
+    outputSchema: {
+      input: {
+        type: 'http',
+        method: 'POST',
+        bodyType: 'json',
+        bodyFields: {
+          method: {
+            type: 'string',
+            required: true,
+            description: 'RPC method name',
+            enum: getSupportedMethods(chain),
+          },
+          params: {
+            type: 'array',
+            required: false,
+            description: 'RPC method parameters',
+          },
+          chain: {
+            type: 'string',
+            required: false,
+            description: 'Blockchain to query (solana, ethereum, base)',
+            enum: ['solana', 'ethereum', 'base'],
+          },
+          preferences: {
+            type: 'object',
+            required: false,
+            description: 'AI agent routing preferences',
+            properties: {
+              strategy: {
+                type: 'string',
+                enum: ['lowest-cost', 'lowest-latency', 'highest-priority', 'round-robin'],
+              },
+              maxLatencyMs: { type: 'number' },
+              maxCostPerCall: { type: 'number' },
+              preferredProviders: { type: 'array' },
+            },
+          },
+        },
+      },
+      output: {
+        jsonrpc: '2.0',
+        id: 1,
+        result: 'RPC result data (varies by method)',
+        x402: {
+          provider: 'Provider name',
+          cost: 'Cost in tokens',
+          status: 'settled',
+        },
+      },
+    },
+
+    // Custom metadata
+    extra: {
+      provider: provider.name,
+      providerId: provider.id,
+      nonce: `${Date.now()}-${Math.random()}`,
+      facilitator: {
+        primary: facilitatorInfo.primary.name,
+        type: facilitatorInfo.primary.type,
+        fallback: facilitatorInfo.fallback?.name,
+      },
+      // Include batch option if available
+      ...(provider.batchCost && {
+        batchOption: {
+          calls: provider.batchCost.calls,
+          price: provider.batchCost.price,
+          savings: `${(((provider.costPerCall * provider.batchCost.calls - provider.batchCost.price) / (provider.costPerCall * provider.batchCost.calls)) * 100).toFixed(1)}%`,
+        },
+      }),
+    },
+  };
+
+  return {
+    x402Version: 1,
+    accepts: [accepts],
   };
 }
 

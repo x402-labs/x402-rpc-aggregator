@@ -33,8 +33,17 @@ export class X402Agent {
     });
 
     if (res.status === 402) {
-      const { invoice } = await res.json();
-      const payment = await this.payInvoice(invoice);
+      // x402scan-compliant response format
+      const x402Response = await res.json();
+      
+      // Extract payment details from accepts array
+      if (!x402Response.accepts || x402Response.accepts.length === 0) {
+        throw new Error('Invalid x402 response: no payment options available');
+      }
+      
+      const paymentDetails = x402Response.accepts[0];
+      const payment = await this.payInvoice(paymentDetails);
+      
       const retry = await fetch(`${this.baseUrl}/rpc`, {
         method: 'POST',
         headers: {
@@ -49,22 +58,28 @@ export class X402Agent {
     return res.json();
   }
 
-  private async payInvoice(invoice: any): Promise<any> {
+  private async payInvoice(paymentDetails: any): Promise<any> {
     const wallet = (window as any).solana;
     if (!wallet?.isPhantom && !wallet?.isSolflare) {
       throw new Error('Phantom or Solflare wallet not detected');
     }
 
-    if (invoice.facilitator?.includes('payai')) {
+    // Extract facilitator info from extra metadata
+    const facilitator = paymentDetails.extra?.facilitator?.primary || '';
+
+    if (facilitator?.includes('payai')) {
       // === PAYAI NETWORK (BASE) ===
       const { signMessage } = (window as any).ethereum;
       if (!signMessage) throw new Error('MetaMask not available for PayAI');
 
-      const message = new TextEncoder().encode(JSON.stringify(invoice));
+      const message = new TextEncoder().encode(JSON.stringify(paymentDetails));
       const signature = await signMessage(message);
       return {
         paymentPayload: { signedIntent: { signature: bs58.encode(signature) } },
-        paymentRequirements: { amount: invoice.amount, recipient: invoice.to },
+        paymentRequirements: { 
+          amount: parseFloat(paymentDetails.maxAmountRequired), 
+          recipient: paymentDetails.payTo 
+        },
       };
     }
 
@@ -72,10 +87,10 @@ export class X402Agent {
     if (!wallet.isConnected) await wallet.connect();
 
     const payer = wallet.publicKey;
-    const recipient = new PublicKey(invoice.to);
-    const amount = Math.floor(invoice.amount * 1_000_000); // USDC has 6 decimals
+    const recipient = new PublicKey(paymentDetails.payTo);
+    const amount = Math.floor(parseFloat(paymentDetails.maxAmountRequired) * 1_000_000); // USDC has 6 decimals
 
-    console.log(`💰 Preparing USDC payment: ${invoice.amount} USDC to ${invoice.to}`);
+    console.log(`💰 Preparing USDC payment: ${paymentDetails.maxAmountRequired} USDC to ${paymentDetails.payTo}`);
 
     // Build USDC transfer
     const sourceATA = await getAssociatedTokenAddress(new PublicKey(USDC_MINT), payer);
@@ -99,12 +114,13 @@ export class X402Agent {
     console.log(`📦 Transaction size: ${serializedTx.length} bytes`);
 
     // Sign intent message
+    const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
     const intentMsg = new TextEncoder().encode(
       JSON.stringify({
-        amount: invoice.amount,
-        to: invoice.to,
-        nonce: invoice.nonce,
-        resource: invoice.resource,
+        amount: parseFloat(paymentDetails.maxAmountRequired),
+        to: paymentDetails.payTo,
+        nonce,
+        resource: paymentDetails.resource,
       })
     );
     const intentSig = await wallet.signMessage(intentMsg);
@@ -121,11 +137,11 @@ export class X402Agent {
       paymentPayload: {
         signedIntent,
         txBase64,  // Backend will broadcast this
-        network: 'solana-mainnet',
+        network: paymentDetails.network,
       },
       paymentRequirements: {
-        amount: invoice.amount,
-        recipient: invoice.to,
+        amount: parseFloat(paymentDetails.maxAmountRequired),
+        recipient: paymentDetails.payTo,
       },
     };
   }

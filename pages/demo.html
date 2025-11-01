@@ -398,21 +398,29 @@
       });
 
       if (res.status === 402) {
-        const { invoice } = await res.json();
-          currentInvoice = invoice;
-          document.getElementById('response').textContent = JSON.stringify({ invoice }, null, 2);
-          document.getElementById('status').innerHTML = `
-            <div class="bg-orange-900 bg-opacity-30 border border-orange-500 rounded-lg p-4">
-              <p class="text-orange-300 font-semibold mb-2">💳 Payment Required</p>
-              <p class="text-orange-200 text-sm mb-2">Amount: <strong>$${invoice.amount}</strong></p>
-              <p class="text-orange-200 text-sm mb-2">Provider: ${invoice.provider || 'Best Available'}</p>
-              <p class="text-orange-200 text-xs mb-3">Payment: ${document.getElementById('facilitator').value === 'xlab' ? 'SOL (X-Labs)' : 'USDC (PayAI)'}</p>
-              <button onclick="payNow()" class="mt-3 w-full px-4 py-2 bg-white text-purple-900 font-bold rounded-lg hover:bg-purple-100">
-                💰 Pay with Phantom
-              </button>
-            </div>
-          `;
-        } else {
+        // x402scan-compliant format
+        const x402Response = await res.json();
+        
+        if (!x402Response.accepts || x402Response.accepts.length === 0) {
+          throw new Error('Invalid x402 response: no payment options');
+        }
+        
+        const paymentDetails = x402Response.accepts[0];
+        currentInvoice = paymentDetails; // Store for payNow()
+        
+        document.getElementById('response').textContent = JSON.stringify(x402Response, null, 2);
+        document.getElementById('status').innerHTML = `
+          <div class="bg-orange-900 bg-opacity-30 border border-orange-500 rounded-lg p-4">
+            <p class="text-orange-300 font-semibold mb-2">💳 Payment Required</p>
+            <p class="text-orange-200 text-sm mb-2">Amount: <strong>$${paymentDetails.maxAmountRequired}</strong></p>
+            <p class="text-orange-200 text-sm mb-2">Provider: ${paymentDetails.extra?.provider || 'Best Available'}</p>
+            <p class="text-orange-200 text-xs mb-3">Payment: ${document.getElementById('facilitator').value === 'xlab' ? 'SOL (X-Labs)' : 'USDC (PayAI)'}</p>
+            <button onclick="payNow()" class="mt-3 w-full px-4 py-2 bg-white text-purple-900 font-bold rounded-lg hover:bg-purple-100">
+              💰 Pay with Phantom
+            </button>
+          </div>
+        `;
+      } else {
           const data = await res.json();
           document.getElementById('response').textContent = JSON.stringify(data, null, 2);
           if (data.x402) {
@@ -584,18 +592,21 @@
       }
     }
 
-    async function buildPayment(invoice, chain) {
+    async function buildPayment(paymentDetails, chain) {
       try {
         console.log('💰 Building for chain:', chain);
         
       if (chain === 'base') {
           const sig = await window.ethereum.request({
             method: 'personal_sign',
-            params: [wallet.publicKey.toBase58(), JSON.stringify(invoice)]
+            params: [wallet.publicKey.toBase58(), JSON.stringify(paymentDetails)]
           });
         return {
             paymentPayload: { signedIntent: { signature: sig } },
-          paymentRequirements: { amount: invoice.amount, recipient: invoice.to },
+          paymentRequirements: { 
+            amount: parseFloat(paymentDetails.maxAmountRequired), 
+            recipient: paymentDetails.payTo 
+          },
         };
       }
 
@@ -606,8 +617,9 @@
           console.log('📌 Building SOL transfer transaction for X-Labs...');
           
           // Get latest blockhash with retry for Triton
+          const isTriton = paymentDetails.extra?.provider?.toLowerCase().includes('triton');
           const getLatestBlockhashWithRetry = async () => {
-            for (let attempt = 1; attempt <= (invoice.provider === 'triton' ? 3 : 1); attempt++) {
+            for (let attempt = 1; attempt <= (isTriton ? 3 : 1); attempt++) {
               try {
                 const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
                   method: 'POST',
@@ -617,7 +629,7 @@
                 const blockhashData = await blockhashRes.json();
                 if (blockhashData.result?.value?.blockhash) return blockhashData.result.value.blockhash;
               } catch (e) {
-                if (attempt === (invoice.provider === 'triton' ? 3 : 1)) throw new Error('Failed to get blockhash');
+                if (attempt === (isTriton ? 3 : 1)) throw new Error('Failed to get blockhash');
                 await new Promise(resolve => setTimeout(resolve, 500));
               }
             }
@@ -654,7 +666,7 @@
           tx.add(
             SystemProgram.transfer({
               fromPubkey: wallet.publicKey,
-              toPubkey: new PublicKey(invoice.to),
+              toPubkey: new PublicKey(paymentDetails.payTo),
               lamports: lamports
             })
           );
@@ -669,7 +681,7 @@
           console.log('✍️ Requesting signature from Phantom...');
           console.log('📋 Transaction details for Phantom:');
           console.log('   - From:', wallet.publicKey.toBase58());
-          console.log('   - To:', invoice.to);
+          console.log('   - To:', paymentDetails.payTo);
           console.log('   - Amount:', lamports, 'lamports (0.01 SOL)');
           console.log('   - Recent blockhash:', tx.recentBlockhash);
           
@@ -711,10 +723,10 @@
           console.log('✅ Transaction serialized, size:', serialized.length, 'bytes');
 
           const intentMsg = new TextEncoder().encode(JSON.stringify({ 
-            amount: invoice.amount, 
-            to: invoice.to, 
-            nonce: invoice.nonce, 
-            resource: invoice.resource || '/rpc' 
+            amount: parseFloat(paymentDetails.maxAmountRequired), 
+            to: paymentDetails.payTo, 
+            nonce: paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`, 
+            resource: paymentDetails.resource || '/rpc' 
           }));
           const intentSig = await wallet.signMessage(intentMsg, 'utf8');
 
@@ -722,19 +734,23 @@
         paymentPayload: {
               signedIntent: { publicKey: wallet.publicKey.toBase58(), signature: bs58.encode(intentSig.signature) },
               txBase64,
-              network: 'solana-mainnet',
+              network: paymentDetails.network,
               paymentType: 'SOL'
             },
-            paymentRequirements: { amount: invoice.amount, recipient: invoice.to, nonce: invoice.nonce },
+            paymentRequirements: { 
+              amount: parseFloat(paymentDetails.maxAmountRequired), 
+              recipient: paymentDetails.payTo, 
+              nonce: paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`
+            },
           };
         } else {
           if (splLoaded) {
             console.log('💳 Using USDC for PayAI');
             const splToken = window.splToken;
             const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-            const amountBigInt = BigInt(Math.floor(invoice.amount * 1e6));
+            const amountBigInt = BigInt(Math.floor(parseFloat(paymentDetails.maxAmountRequired) * 1e6));
             let blockhashData;
-            const isTriton = invoice.provider === 'triton';
+            const isTriton = paymentDetails.extra?.provider?.toLowerCase().includes('triton');
             for (let attempt = 1; attempt <= (isTriton ? 3 : 1); attempt++) {
               try {
                 const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
@@ -754,26 +770,36 @@
             tx.feePayer = wallet.publicKey;
             const fromATA = await splToken.getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
             await getOrCreateATA(tx, wallet.publicKey, USDC_MINT, wallet.publicKey, fromATA);
-            const toATA = await splToken.getAssociatedTokenAddress(USDC_MINT, new PublicKey(invoice.to));
-            await getOrCreateATA(tx, new PublicKey(invoice.to), USDC_MINT, wallet.publicKey, toATA);
+            const toATA = await splToken.getAssociatedTokenAddress(USDC_MINT, new PublicKey(paymentDetails.payTo));
+            await getOrCreateATA(tx, new PublicKey(paymentDetails.payTo), USDC_MINT, wallet.publicKey, toATA);
             tx.add(splToken.createTransferInstruction(fromATA, toATA, wallet.publicKey, amountBigInt));
             const signed = await wallet.signTransaction(tx);
             const serialized = signed.serialize();
             const txBase64 = bs58.encode(serialized);
-            const intentMsg = new TextEncoder().encode(JSON.stringify({ amount: invoice.amount, to: invoice.to, nonce: invoice.nonce, resource: invoice.resource || '/rpc' }));
+            const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
+            const intentMsg = new TextEncoder().encode(JSON.stringify({ 
+              amount: parseFloat(paymentDetails.maxAmountRequired), 
+              to: paymentDetails.payTo, 
+              nonce, 
+              resource: paymentDetails.resource || '/rpc' 
+            }));
             const intentSig = await wallet.signMessage(intentMsg, 'utf8');
             return {
               paymentPayload: {
                 signedIntent: { publicKey: wallet.publicKey.toBase58(), signature: bs58.encode(intentSig.signature) },
                 txBase64,
-                network: 'solana-mainnet'
+                network: paymentDetails.network
               },
-              paymentRequirements: { amount: invoice.amount, recipient: invoice.to, nonce: invoice.nonce },
+              paymentRequirements: { 
+                amount: parseFloat(paymentDetails.maxAmountRequired), 
+                recipient: paymentDetails.payTo, 
+                nonce 
+              },
             };
           } else {
             console.warn('⚠️ SPL not loaded - Using SOL for PayAI');
             let blockhashData;
-            const isTriton = invoice.provider === 'triton';
+            const isTriton = paymentDetails.extra?.provider?.toLowerCase().includes('triton');
             for (let attempt = 1; attempt <= (isTriton ? 3 : 1); attempt++) {
               try {
                 const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
@@ -806,7 +832,7 @@
             const transferIx = new TransactionInstruction({
               keys: [
                 { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
-                { pubkey: new PublicKey(invoice.to), isSigner: false, isWritable: true }
+                { pubkey: new PublicKey(paymentDetails.payTo), isSigner: false, isWritable: true }
               ],
               programId: new PublicKey('11111111111111111111111111111111'),
               data: transferInstructionData
@@ -816,21 +842,26 @@
             const signed = await wallet.signTransaction(tx);
             const serialized = signed.serialize();
             const txBase64 = bs58.encode(serialized);
+            const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
             const intentMsg = new TextEncoder().encode(JSON.stringify({ 
-              amount: invoice.amount, 
-              to: invoice.to, 
-              nonce: invoice.nonce, 
-              resource: invoice.resource || '/rpc' 
+              amount: parseFloat(paymentDetails.maxAmountRequired), 
+              to: paymentDetails.payTo, 
+              nonce, 
+              resource: paymentDetails.resource || '/rpc' 
             }));
             const intentSig = await wallet.signMessage(intentMsg, 'utf8');
             return {
               paymentPayload: {
                 signedIntent: { publicKey: wallet.publicKey.toBase58(), signature: bs58.encode(intentSig.signature) },
           txBase64,
-          network: 'solana-mainnet',
+          network: paymentDetails.network,
                 paymentType: 'SOL'
               },
-              paymentRequirements: { amount: invoice.amount, recipient: invoice.to, nonce: invoice.nonce },
+              paymentRequirements: { 
+                amount: parseFloat(paymentDetails.maxAmountRequired), 
+                recipient: paymentDetails.payTo, 
+                nonce 
+              },
             };
           }
         }
