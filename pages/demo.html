@@ -627,8 +627,8 @@
             amount: parseFloat(paymentDetails.maxAmountRequired),
             to: paymentDetails.payTo,
             nonce,
-            resource: paymentDetails.resource || '/rpc',
-            network: 'solana-mainnet',
+            resource: paymentDetails.resource || 'https://x402labs.cloud/rpc',
+            network: 'solana',
             treasury: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR'
           };
           
@@ -652,7 +652,7 @@
               amount: parseFloat(paymentDetails.maxAmountRequired),
               recipient: paymentDetails.payTo,
               nonce,
-              network: 'solana-mainnet'
+              network: 'solana'
             }
           };
         }

@@ -225,16 +225,17 @@ function createX402Response(
   const facilitatorInfo = facilitatorManager.getInfo();
   
   // Determine network and asset based on chain
+  // Use x402scan-compliant network names (no -mainnet suffix for primary networks)
   const getChainInfo = (chain: string) => {
     switch (chain) {
       case 'solana':
-        return { network: 'solana-mainnet', asset: 'SOL' };
+        return { network: 'solana', asset: 'SOL' };
       case 'ethereum':
-        return { network: 'ethereum-mainnet', asset: 'ETH' };
+        return { network: 'ethereum', asset: 'ETH' };
       case 'base':
-        return { network: 'base-mainnet', asset: 'ETH' };
+        return { network: 'base', asset: 'ETH' };
       default:
-        return { network: `${chain}-mainnet`, asset: 'SOL' };
+        return { network: chain, asset: 'SOL' };
     }
   };
 
@@ -271,7 +272,7 @@ function createX402Response(
     scheme: 'exact',
     network,
     maxAmountRequired: provider.costPerCall.toString(),
-    resource,
+    resource: `https://x402labs.cloud${resource}`, // Full URL required by x402scan
     description: `RPC access via ${provider.name} for ${chain}`,
     mimeType: 'application/json',
     payTo: process.env.X402_WALLET || 'WALLET_NOT_CONFIGURED',

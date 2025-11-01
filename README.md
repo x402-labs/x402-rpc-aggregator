@@ -10,6 +10,7 @@ A production-ready RPC aggregator that intelligently routes blockchain RPC calls
 |---------|--------|-------------|
 | **Multi-provider routing** | ✅ Done | Triton, Helius, QuickNode, Alchemy, Infura |
 | **x402 micropayments** | ✅ Done | USDC on Solana & Base (official PayAI SDK) |
+| **x402scan compliant** | ✅ Done | Compatible with [x402scan.com](https://www.x402scan.com/resources/register) |
 | **Dual facilitators** | ✅ Done | X-Labs OR PayAI Network (choose freely) |
 | **Intelligent routing** | ✅ Done | Cost, latency, priority, round-robin strategies |
 | **AI agent compatible** | ✅ Done | No login, autonomous payments |
