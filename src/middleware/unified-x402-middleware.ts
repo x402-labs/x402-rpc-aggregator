@@ -81,7 +81,7 @@ export function createUnifiedX402Middleware(
             console.log(`🎫 Batch payment: ${batch.callsRemaining}/${batch.totalCalls} remaining`);
             return next();
           } else {
-            const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager);
+            const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
             return res.status(402).json({
               ...x402Response,
               error: 'Batch expired or depleted',
@@ -94,7 +94,7 @@ export function createUnifiedX402Middleware(
 
       // === 402 CHALLENGE ===
       if (!paymentHeader) {
-        const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager);
+        const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
         return res.status(402).json(x402Response);
       }
 
@@ -220,9 +220,18 @@ function createX402Response(
   provider: RPCProvider,
   chain: string,
   resource: string,
-  facilitatorManager: FacilitatorManager
+  facilitatorManager: FacilitatorManager,
+  clientFacilitator?: string
 ): X402Response {
   const facilitatorInfo = facilitatorManager.getInfo();
+  
+  // Determine which facilitator will be used (client preference or default)
+  let effectiveFacilitator = facilitatorInfo.primary.type || 'payai';
+  
+  // If client specifies a facilitator preference, use that for asset selection
+  if (clientFacilitator === 'xlab' || clientFacilitator === 'payai') {
+    effectiveFacilitator = clientFacilitator;
+  }
   
   // Determine network and asset based on chain AND facilitator type
   // Use x402scan-compliant network names (no -mainnet suffix for primary networks)
@@ -244,7 +253,7 @@ function createX402Response(
     }
   };
 
-  const { network, asset } = getChainInfo(chain, facilitatorInfo.primary.type || 'payai');
+  const { network, asset } = getChainInfo(chain, effectiveFacilitator);
 
   // Get supported RPC methods based on chain
   const getSupportedMethods = (chain: string): string[] => {
