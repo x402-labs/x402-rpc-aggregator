@@ -224,22 +224,27 @@ function createX402Response(
 ): X402Response {
   const facilitatorInfo = facilitatorManager.getInfo();
   
-  // Determine network and asset based on chain
+  // Determine network and asset based on chain AND facilitator type
   // Use x402scan-compliant network names (no -mainnet suffix for primary networks)
-  const getChainInfo = (chain: string) => {
+  // IMPORTANT: costPerCall is in USD, so we prefer USDC (1:1 with USD) for accurate pricing
+  // But X-Labs facilitator uses SOL, so we match the facilitator's payment token
+  const getChainInfo = (chain: string, facilitatorType: string) => {
     switch (chain) {
       case 'solana':
-        return { network: 'solana', asset: 'SOL' };
+        // PayAI uses USDC (1:1 with USD - accurate pricing)
+        // X-Labs uses SOL (volatile, but that's the facilitator's choice)
+        const asset = facilitatorType === 'xlab' ? 'SOL' : 'USDC';
+        return { network: 'solana', asset };
       case 'ethereum':
         return { network: 'ethereum', asset: 'ETH' };
       case 'base':
         return { network: 'base', asset: 'ETH' };
       default:
-        return { network: chain, asset: 'SOL' };
+        return { network: chain, asset: 'USDC' };
     }
   };
 
-  const { network, asset } = getChainInfo(chain);
+  const { network, asset } = getChainInfo(chain, facilitatorInfo.primary.type || 'payai');
 
   // Get supported RPC methods based on chain
   const getSupportedMethods = (chain: string): string[] => {
@@ -268,21 +273,34 @@ function createX402Response(
     }
   };
 
-  // Convert amount to base unit (lamports for SOL, wei for ETH, etc.)
-  const getAmountInBaseUnit = (amount: number, asset: string): string => {
+  // Convert USD amount to base unit (micro-USDC, lamports for SOL, wei for ETH, etc.)
+  // costPerCall is always in USD - need to convert based on asset type
+  const getAmountInBaseUnit = (usdAmount: number, asset: string): string => {
     switch (asset) {
       case 'SOL':
-        // 1 SOL = 1,000,000,000 lamports (1e9)
-        return Math.floor(amount * 1e9).toString();
+        // For X-Labs facilitator: Convert USD to SOL first
+        // Approximate SOL price: $150-$250 (use $200 as mid-range)
+        const SOL_USD_PRICE = 200; // Should ideally fetch from oracle, but $200 is reasonable
+        const solAmount = usdAmount / SOL_USD_PRICE;
+        // Convert SOL to lamports: 1 SOL = 1,000,000,000 lamports (1e9)
+        // Example: $0.00015 USD / $200 = 0.00000075 SOL = 750 lamports
+        return Math.floor(solAmount * 1e9).toString();
       case 'ETH':
-        // 1 ETH = 1,000,000,000,000,000,000 wei (1e18)
-        return Math.floor(amount * 1e18).toString();
+        // For Ethereum: Convert USD to ETH first
+        // Approximate ETH price: $2000-$4000 (use $3000 as mid-range)
+        const ETH_USD_PRICE = 3000;
+        const ethAmount = usdAmount / ETH_USD_PRICE;
+        // Convert ETH to wei: 1 ETH = 1,000,000,000,000,000,000 wei (1e18)
+        return Math.floor(ethAmount * 1e18).toString();
       case 'USDC':
+        // For PayAI facilitator: USDC is 1:1 with USD - perfect for micropayments
+        // costPerCall in USD = same amount in USDC
         // 1 USDC = 1,000,000 micro-USDC (1e6)
-        return Math.floor(amount * 1e6).toString();
+        // Example: $0.00015 USD = 0.00015 USDC = 150 micro-USDC
+        return Math.floor(usdAmount * 1e6).toString();
       default:
-        // Default to 9 decimals (SOL standard)
-        return Math.floor(amount * 1e9).toString();
+        // Default to USDC (1e6 decimals)
+        return Math.floor(usdAmount * 1e6).toString();
     }
   };
 

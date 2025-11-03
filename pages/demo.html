@@ -238,49 +238,6 @@
         </div>
       </div>
     </div>
-
-    <!-- QuickNode Example Code Section -->
-    <div class="mt-12 bg-gray-800 p-6 rounded-xl">
-      <h2 class="text-2xl font-semibold mb-4">QuickNode RPC Example</h2>
-      <p class="text-gray-400 mb-4">Direct connection example using QuickNode Solana endpoint with Metaplex DAS API addons:</p>
-      
-      <div class="bg-gray-900 p-4 rounded-lg mb-4 overflow-x-auto">
-        <pre class="text-xs text-green-400"><code>// Node.js example
-const web3 = require("@solana/web3.js");
-
-(async () => {
-  
-  const QUICKNODE_URL = process.env.QUICKNODE_SOLANA_URL;
-  const solana = new web3.Connection(QUICKNODE_URL);
-  
-  // Standard Solana RPC method
-  const slot = await solana.getSlot();
-  console.log("Current slot:", slot);
-  
-  // Metaplex DAS API method (addon)
-  const assetSignatures = await solana.send('getAssetSignatures', [{
-    id: "HhbYrhZZcTDX8J8rwyAsXFNqqrhWcKUhgoA8Jv3PaWde",
-    limit: 10
-  }]);
-  console.log("Asset signatures:", assetSignatures);
-})();</code></pre>
-      </div>
-
-      <div class="text-sm text-gray-400">
-        <p class="mb-2"><strong>Available Addons:</strong></p>
-        <ul class="list-disc list-inside space-y-1 ml-4">
-          <li>Metaplex Digital Asset Standard (DAS) API - 12 methods</li>
-          <li>Solana Priority Fee API</li>
-          <li>Pump Fun API</li>
-          <li>Solana Transaction Fastlane</li>
-          <li>MEV Protection & Recovery (Merkle)</li>
-          <li>Structured real-time Solana data (LYS Labs)</li>
-        </ul>
-        <p class="mt-4 text-xs">
-          <strong>Note:</strong> Configure <code>QUICKNODE_SOLANA_URL</code> in your <code>.env</code> file for security.
-        </p>
-      </div>
-    </div>
   </div>
 
   <script>

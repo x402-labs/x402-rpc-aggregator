@@ -118,7 +118,7 @@ export const PROVIDERS: RPCProvider[] = [
     maxLatencyMs: 3000,
     status: process.env.QUICKNODE_SOLANA_URL ? 'active' : 'offline',
     metadata: {
-      description: 'Enterprise-grade Solana RPC with Metaplex DAS API, Priority Fee API, Pump Fun API, Transaction Fastlane, and MEV Protection addons',
+      description: 'Enterprise-grade Solana RPC with Metaplex DAS API, Priority Fee API, Pump Fun API, Transaction Fastlane, and MEV Protection add-ons',
       websiteUrl: 'https://quicknode.com',
       supportedMethods: [
         // Standard Solana RPC Methods
