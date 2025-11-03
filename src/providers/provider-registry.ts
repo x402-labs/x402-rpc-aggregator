@@ -104,7 +104,21 @@ export class ProviderRegistry {
     if (success) {
       health.latency = latency;
       health.consecutiveFailures = 0;
-      health.status = latency > (provider.maxLatencyMs || 5000) ? 'degraded' : 'healthy';
+      
+      // Update health status based on latency threshold
+      const maxLatency = provider.maxLatencyMs || 5000;
+      if (latency > maxLatency) {
+        health.status = 'degraded';
+        provider.status = 'degraded'; // Sync provider status
+      } else {
+        health.status = 'healthy';
+        // Only set provider to 'active' if it wasn't intentionally offline
+        if (provider.status !== 'offline' || provider.url) {
+          provider.status = 'active';
+        }
+      }
+      
+      // Update average latency with exponential moving average (20% weight for new value)
       provider.averageLatency = provider.averageLatency 
         ? (provider.averageLatency * 0.8 + latency * 0.2) 
         : latency;
@@ -117,6 +131,7 @@ export class ProviderRegistry {
         health.status = 'degraded';
         provider.status = 'degraded';
       }
+      // Don't update latency on failure - keep last known good latency
     }
 
     health.lastCheck = new Date();
@@ -131,7 +146,7 @@ export class ProviderRegistry {
    */
   async checkProviderHealth(provider: RPCProvider): Promise<void> {
     // Skip health check if provider has no URL or is already marked offline
-    if (!provider.url || provider.url === '' || provider.status === 'offline') {
+    if (!provider.url || provider.url === '') {
       this.updateProviderStatus(provider.id, 'offline');
       const health = this.healthStatus.get(provider.id);
       if (health) {
@@ -163,17 +178,40 @@ export class ProviderRegistry {
       });
 
       const latency = Date.now() - startTime;
-      const success = response.ok;
+      
+      // Check if response is OK and has valid JSON-RPC format
+      let success = false;
+      if (response.ok) {
+        try {
+          const data = await response.json();
+          // Verify it's a valid JSON-RPC response
+          if (data && (data.result !== undefined || data.error !== undefined)) {
+            // Even if there's an error, we got a valid response (provider is reachable)
+            success = true;
+          }
+        } catch (jsonError) {
+          // Invalid JSON response
+          success = false;
+        }
+      }
 
       this.recordHealthCheck(provider.id, latency, success);
 
       if (!success) {
-        console.warn(`⚠️  Health check failed for ${provider.name}: ${response.status} (configure API key in .env)`);
+        console.warn(`⚠️  Health check failed for ${provider.name}: ${response.status} (latency: ${latency}ms)`);
+      } else {
+        console.log(`✅ Health check passed for ${provider.name}: ${latency}ms`);
       }
     } catch (error: any) {
       const latency = Date.now() - startTime;
       this.recordHealthCheck(provider.id, latency, false);
-      console.error(`❌ Health check error for ${provider.name}:`, error.message);
+      
+      // Log specific error types
+      if (error.name === 'AbortError' || error.message.includes('timeout')) {
+        console.error(`❌ Health check timeout for ${provider.name} (${latency}ms)`);
+      } else {
+        console.error(`❌ Health check error for ${provider.name}:`, error.message);
+      }
     }
   }
 

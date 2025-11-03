@@ -161,6 +161,17 @@
       font-weight: 500;
     }
     
+    .sort-hint {
+      color: #10b981;
+      font-size: 0.75rem;
+      margin: 0;
+      padding: 0.25rem 0.5rem;
+      background: rgba(16, 185, 129, 0.1);
+      border-radius: 0.25rem;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      display: inline-block;
+    }
+    
     /* Provider Cards Grid */
     .providers-grid {
       display: grid;
@@ -304,6 +315,26 @@
     
     .stat-item-value.latency {
       color: #3b82f6;
+    }
+    
+    .stat-item-value.latency.na {
+      color: #64748b;
+      font-style: italic;
+    }
+    
+    .stat-item-value.status-active {
+      color: #10b981;
+      font-weight: 600;
+    }
+    
+    .stat-item-value.status-degraded {
+      color: #f59e0b;
+      font-weight: 600;
+    }
+    
+    .stat-item-value.status-offline {
+      color: #ef4444;
+      font-weight: 600;
     }
     
     /* Provider Description */
@@ -564,6 +595,7 @@
         <option value="latency">Sort by Latency</option>
         <option value="name">Sort by Name</option>
       </select>
+      <p class="sort-hint">Active providers shown first</p>
     </div>
 
     <!-- Loading State -->
@@ -598,6 +630,13 @@
         const response = await fetch('/providers');
         const data = await response.json();
         allProviders = data.providers;
+        
+        // Log health data for debugging
+        console.log('📊 Providers loaded:', allProviders.length);
+        allProviders.forEach(p => {
+          console.log(`  ${p.name}: ${p.status}, latency: ${p.averageLatency || 'N/A'}ms`);
+        });
+        
         updateStats();
         renderProviders();
         document.getElementById('loading').style.display = 'none';
@@ -606,19 +645,31 @@
         document.getElementById('loading').innerHTML = '<p>Failed to load providers. Please refresh.</p>';
       }
     }
+    
+    // Auto-refresh providers every 30 seconds to show updated health status
+    setInterval(fetchProviders, 30000);
 
     // Update stats
     function updateStats() {
       const activeCount = allProviders.filter(p => p.status === 'active').length;
-      const avgLat = allProviders
-        .filter(p => p.averageLatency)
-        .reduce((sum, p) => sum + p.averageLatency, 0) / activeCount || 0;
-      const cheapest = Math.min(...allProviders.map(p => p.costPerCall));
+      
+      // Calculate average latency only from active providers with valid latency
+      const activeProvidersWithLatency = allProviders.filter(
+        p => p.status === 'active' && p.averageLatency && p.averageLatency > 0
+      );
+      
+      const avgLat = activeProvidersWithLatency.length > 0
+        ? activeProvidersWithLatency.reduce((sum, p) => sum + p.averageLatency, 0) / activeProvidersWithLatency.length
+        : 0;
+      
+      const cheapest = allProviders.length > 0
+        ? Math.min(...allProviders.map(p => p.costPerCall))
+        : 0;
 
       document.getElementById('total-providers').textContent = allProviders.length;
       document.getElementById('active-providers').textContent = activeCount;
-      document.getElementById('avg-latency').textContent = Math.round(avgLat);
-      document.getElementById('cheapest-cost').textContent = '$' + cheapest.toFixed(6);
+      document.getElementById('avg-latency').textContent = avgLat > 0 ? Math.round(avgLat) : '-';
+      document.getElementById('cheapest-cost').textContent = cheapest > 0 ? '$' + cheapest.toFixed(6) : '-';
     }
 
     // Render providers
@@ -639,6 +690,21 @@
     // Sort providers
     function sortProviders(providers) {
       return [...providers].sort((a, b) => {
+        // PRIORITY 1: Always show active/healthy providers first
+        const statusPriority = {
+          'active': 3,
+          'degraded': 2,
+          'offline': 1
+        };
+        
+        const aStatusPriority = statusPriority[a.status] || 0;
+        const bStatusPriority = statusPriority[b.status] || 0;
+        
+        if (aStatusPriority !== bStatusPriority) {
+          return bStatusPriority - aStatusPriority; // Higher status priority first
+        }
+        
+        // PRIORITY 2: Within same status, apply user's selected sort
         switch (currentSort) {
           case 'cost':
             return a.costPerCall - b.costPerCall;
@@ -656,11 +722,25 @@
     // Create provider card HTML
     function createProviderCard(provider) {
       const statusClass = provider.status || 'offline';
-      const latency = provider.averageLatency ? Math.round(provider.averageLatency) : 'N/A';
+      // Display latency: use averageLatency if available, otherwise show N/A
+      const latency = provider.averageLatency && provider.averageLatency > 0 
+        ? Math.round(provider.averageLatency) 
+        : 'N/A';
       const hasBatch = provider.batchCost;
       const savings = hasBatch ? 
         (((provider.costPerCall * provider.batchCost.calls - provider.batchCost.price) / (provider.costPerCall * provider.batchCost.calls)) * 100).toFixed(0) 
         : 0;
+      
+      // Determine status badge color and text
+      let statusBadgeClass = '';
+      let statusText = statusClass.toUpperCase();
+      if (statusClass === 'active') {
+        statusBadgeClass = 'status-active';
+      } else if (statusClass === 'degraded') {
+        statusBadgeClass = 'status-degraded';
+      } else {
+        statusBadgeClass = 'status-offline';
+      }
 
       return `
         <div class="provider-card">
@@ -688,7 +768,7 @@
             </div>
             <div class="stat-item">
               <div class="stat-item-label">Latency</div>
-              <div class="stat-item-value latency">${latency}ms</div>
+              <div class="stat-item-value latency ${latency === 'N/A' ? 'na' : ''}">${latency}${latency !== 'N/A' ? 'ms' : ''}</div>
             </div>
             <div class="stat-item">
               <div class="stat-item-label">Priority</div>
@@ -696,7 +776,7 @@
             </div>
             <div class="stat-item">
               <div class="stat-item-label">Status</div>
-              <div class="stat-item-value">${statusClass.toUpperCase()}</div>
+              <div class="stat-item-value ${statusBadgeClass}">${statusText}</div>
             </div>
           </div>
 
@@ -769,7 +849,7 @@
     // Initialize
     fetchProviders();
     
-    // Refresh every 30 seconds
+    // Refresh every 30 seconds to show updated health status
     setInterval(fetchProviders, 30000);
   </script>
 </body>
