@@ -400,11 +400,37 @@
         const paymentDetails = x402Response.accepts[0];
         currentInvoice = paymentDetails; // Store for payNow()
         
+        // Convert base units to human-readable format
+        const baseAmount = parseFloat(paymentDetails.maxAmountRequired);
+        const asset = paymentDetails.asset;
+        let displayAmount = '';
+        let usdValue = '';
+        
+        if (asset === 'USDC') {
+          // micro-USDC to USDC: divide by 1,000,000
+          const usdc = baseAmount / 1e6;
+          displayAmount = `${usdc.toFixed(6)} USDC`;
+          usdValue = `≈ $${usdc.toFixed(6)} USD`;
+        } else if (asset === 'SOL') {
+          // lamports to SOL: divide by 1,000,000,000
+          const sol = baseAmount / 1e9;
+          const usd = sol * 200; // Approximate @ $200/SOL
+          displayAmount = `${sol.toFixed(9)} SOL`;
+          usdValue = `≈ $${usd.toFixed(6)} USD`;
+        } else if (asset === 'ETH') {
+          // wei to ETH: divide by 1e18
+          const eth = baseAmount / 1e18;
+          const usd = eth * 3000; // Approximate @ $3000/ETH
+          displayAmount = `${eth.toFixed(12)} ETH`;
+          usdValue = `≈ $${usd.toFixed(6)} USD`;
+        }
+        
         document.getElementById('response').textContent = JSON.stringify(x402Response, null, 2);
         document.getElementById('status').innerHTML = `
           <div class="bg-orange-900 bg-opacity-30 border border-orange-500 rounded-lg p-4">
             <p class="text-orange-300 font-semibold mb-2">💳 Payment Required</p>
-            <p class="text-orange-200 text-sm mb-2">Amount: <strong>$${paymentDetails.maxAmountRequired}</strong></p>
+            <p class="text-orange-200 text-sm mb-2">Amount: <strong>${displayAmount}</strong></p>
+            <p class="text-orange-200 text-xs mb-1">${usdValue}</p>
             <p class="text-orange-200 text-sm mb-2">Provider: ${paymentDetails.extra?.provider || 'Best Available'}</p>
             <p class="text-orange-200 text-xs mb-3">Payment: ${document.getElementById('facilitator').value === 'xlab' ? 'SOL (X-Labs)' : 'USDC (PayAI)'}</p>
             <button onclick="payNow()" class="mt-3 w-full px-4 py-2 bg-white text-purple-900 font-bold rounded-lg hover:bg-purple-100">

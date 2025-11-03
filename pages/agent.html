@@ -302,9 +302,25 @@
             }
             
             const paymentDetails = x402Response.accepts[0];
-            paid += parseFloat(paymentDetails.maxAmountRequired);
+            
+            // Convert base units to USD for tracking
+            const baseAmount = parseFloat(paymentDetails.maxAmountRequired);
+            const asset = paymentDetails.asset;
+            let usdAmount = 0;
+            
+            if (asset === 'USDC') {
+              usdAmount = baseAmount / 1e6;  // micro-USDC to USD (1:1)
+            } else if (asset === 'SOL') {
+              const sol = baseAmount / 1e9;  // lamports to SOL
+              usdAmount = sol * 200;  // SOL to USD @ $200
+            } else if (asset === 'ETH') {
+              const eth = baseAmount / 1e18;  // wei to ETH
+              usdAmount = eth * 3000;  // ETH to USD @ $3000
+            }
+            
+            paid += usdAmount;
             updateStats();
-            log(`402: Pay $${paymentDetails.maxAmountRequired} via ${paymentDetails.network}`);
+            log(`402: Pay $${usdAmount.toFixed(6)} USD (${baseAmount} ${asset} base units) via ${paymentDetails.network}`);
 
             const payment = await payWithX402(paymentDetails, task.chain, wallet);
             const retry = await fetch(API, {

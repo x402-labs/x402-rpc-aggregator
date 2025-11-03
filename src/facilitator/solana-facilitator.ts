@@ -128,20 +128,23 @@ export class SolanaFacilitator {
       const { signedIntent, txBase64, network = 'solana-mainnet' } = paymentPayload;
       const { amount, recipient, nonce } = paymentRequirements;
       
-      console.log(`   Network: ${network}`);
+      // Normalize network name: 'solana' → 'solana-mainnet'
+      const normalizedNetwork = network === 'solana' ? 'solana-mainnet' : network;
+      
+      console.log(`   Network: ${network} (normalized: ${normalizedNetwork})`);
       console.log(`   Amount: ${amount}`);
       console.log(`   Recipient: ${recipient}`);
       console.log(`   Has signedIntent: ${!!signedIntent}`);
       console.log(`   Has txBase64: ${!!txBase64}`);
 
       // Get connection for requested network
-      const conn = this.connections.get(network);
+      const conn = this.connections.get(normalizedNetwork);
       if (!conn) {
-        console.error(`❌ Network not supported: ${network}`);
+        console.error(`❌ Network not supported: ${normalizedNetwork}`);
         console.error(`   Available networks:`, Array.from(this.connections.keys()));
-        return { valid: false, error: `Unsupported network: ${network}` };
+        return { valid: false, error: `Unsupported network: ${normalizedNetwork}` };
       }
-      console.log(`✅ Network connection found: ${network}`);
+      console.log(`✅ Network connection found: ${normalizedNetwork}`);
 
       // Step 1: Verify signed intent message (ed25519 signature)
       console.log(`🔑 Step 1: Verifying signature...`);
@@ -310,9 +313,13 @@ export class SolanaFacilitator {
       }
 
       const { txBase64, network = 'solana-mainnet' } = paymentPayload;
-      const conn = this.connections.get(network);
+      
+      // Normalize network name: 'solana' → 'solana-mainnet'
+      const normalizedNetwork = network === 'solana' ? 'solana-mainnet' : network;
+      
+      const conn = this.connections.get(normalizedNetwork);
       if (!conn) {
-        return { settled: false, error: `Unsupported network: ${network}` };
+        return { settled: false, error: `Unsupported network: ${normalizedNetwork}` };
       }
 
       // Deserialize the signed transaction
