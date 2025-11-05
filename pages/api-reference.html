@@ -574,6 +574,162 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
         </div>
       </section>
 
+      <!-- x402 Payment Header -->
+      <section id="x402-payment" class="section">
+        <h2>x402-payment Header Format <span class="status-badge live">REQUIRED</span></h2>
+        
+        <p style="color: #cbd5e1; margin-bottom: 2rem;">
+          The <span class="inline-code">x402-payment</span> header contains payment proof for accessing RPC endpoints.
+          It must be a JSON string with payment payload and requirements.
+        </p>
+
+        <h3>Header Structure</h3>
+        <div class="endpoint-card">
+<pre><code>Header: x402-payment
+Value: JSON string
+
+{
+  "paymentPayload": {
+    // Payment proof (varies by facilitator)
+  },
+  "paymentRequirements": {
+    // Payment details
+  }
+}</code></pre>
+        </div>
+
+        <h3>X-Labs Facilitator (SOL Payments)</h3>
+        <div class="endpoint-card">
+          <p style="color: #cbd5e1; margin-bottom: 1rem;">For X-Labs facilitator, include signed transaction:</p>
+<pre><code>{
+  "paymentPayload": {
+    "signedIntent": {
+      "publicKey": "3HBV2F9C25k8169rKv6FDqaFHj52NYH5JJjFYDo5nAZ",
+      "signature": "5x1y2z3a4b..."  // Base58-encoded ed25519 signature
+    },
+    "txBase64": "26pM95XT8BuZ...",  // Base58-encoded serialized transaction
+    "network": "solana",  // or "solana-mainnet" (auto-normalized)
+    "paymentType": "SOL"  // Optional
+  },
+  "paymentRequirements": {
+    "amount": 749,  // In lamports (749 = 0.000000749 SOL ≈ $0.00015)
+    "recipient": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",
+    "nonce": "1762210242077-0.492",
+    "resource": "/rpc"  // Optional
+  }
+}</code></pre>
+          <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">
+            💡 Payment Intent Message (what gets signed):
+          </p>
+<pre><code>{
+  "amount": 749,
+  "to": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",
+  "nonce": "1762210242077-0.492",
+  "resource": "/rpc"
+}</code></pre>
+        </div>
+
+        <h3>PayAI Network Facilitator (USDC Payments)</h3>
+        <div class="endpoint-card">
+          <p style="color: #cbd5e1; margin-bottom: 1rem;">For PayAI facilitator, no transaction needed (SDK handles USDC transfer):</p>
+<pre><code>{
+  "paymentPayload": {
+    "signedIntent": {
+      "publicKey": "3HBV2F9C25k8169rKv6FDqaFHj52NYH5JJjFYDo5nAZ",
+      "signature": "2a8b9c..."  // Base58-encoded signature
+    },
+    "network": "solana",
+    "facilitator": "payai",
+    "treasury": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR"
+  },
+  "paymentRequirements": {
+    "amount": 150,  // In micro-USDC (150 = 0.000150 USDC ≈ $0.00015)
+    "recipient": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",
+    "nonce": "1762210242077-0.123",
+    "network": "solana"
+  }
+}</code></pre>
+        </div>
+
+        <h3>Amount Units Reference</h3>
+        <div class="endpoint-card">
+          <table class="parameter-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Base Unit</th>
+                <th>Decimals</th>
+                <th>Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>SOL</strong></td>
+                <td>lamports</td>
+                <td>9</td>
+                <td>749 lamports = 0.000000749 SOL ≈ $0.00015</td>
+              </tr>
+              <tr>
+                <td><strong>USDC</strong></td>
+                <td>micro-USDC</td>
+                <td>6</td>
+                <td>150 micro-USDC = 0.000150 USDC = $0.00015</td>
+              </tr>
+              <tr>
+                <td><strong>ETH</strong></td>
+                <td>wei</td>
+                <td>18</td>
+                <td>5e14 wei = 0.0005 ETH ≈ $1.50</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Usage Example</h3>
+        <div class="endpoint-card">
+          <p style="color: #cbd5e1; margin-bottom: 1rem;">JavaScript example:</p>
+<pre><code>const payment = {
+  paymentPayload: {
+    signedIntent: { /* ... */ },
+    txBase64: "...",  // X-Labs only
+    network: "solana"
+  },
+  paymentRequirements: {
+    amount: 749,
+    recipient: "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",
+    nonce: `${Date.now()}-${Math.random()}`
+  }
+};
+
+const response = await fetch('https://x402labs.cloud/rpc', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x402-payment': JSON.stringify(payment)  // ← Stringified JSON
+  },
+  body: JSON.stringify({
+    method: 'getSlot',
+    params: [],
+    chain: 'solana'
+  })
+});</code></pre>
+        </div>
+
+        <h3>Validation Rules</h3>
+        <div class="endpoint-card">
+          <p style="color: #cbd5e1; margin-bottom: 1rem;">The payment header is validated for:</p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Valid JSON format</li>
+            <li>Ed25519 signature verification (signedIntent)</li>
+            <li>Amount matches expected cost (from 402 response)</li>
+            <li>Recipient matches facilitator wallet</li>
+            <li>Nonce is unique (prevents replay attacks)</li>
+            <li>For X-Labs: Transaction contains valid SOL transfer</li>
+            <li>For PayAI: Signature verified by PayAI SDK</li>
+          </ul>
+        </div>
+      </section>
+
       <!-- Health Endpoint -->
       <section id="health" class="section">
         <h2>Health Check</h2>

@@ -439,7 +439,139 @@ export const swaggerDocument = {
         type: 'apiKey',
         in: 'header',
         name: 'x402-payment',
-        description: 'x402 payment proof (JSON payload with signed intent and transaction)',
+        description: 'x402 payment proof (JSON payload with signed intent and transaction). Must be a JSON string.',
+      },
+    },
+    schemas: {
+      X402PaymentHeader: {
+        type: 'object',
+        required: ['paymentPayload', 'paymentRequirements'],
+        properties: {
+          paymentPayload: {
+            oneOf: [
+              { $ref: '#/components/schemas/XLabsPaymentPayload' },
+              { $ref: '#/components/schemas/PayAIPaymentPayload' },
+            ],
+          },
+          paymentRequirements: {
+            $ref: '#/components/schemas/PaymentRequirements',
+          },
+        },
+        example: {
+          paymentPayload: {
+            signedIntent: {
+              publicKey: '3HBV2F9C25k8169rKv6FDqaFHj52NYH5JJjFYDo5nAZ',
+              signature: '5x1y2z3a4b5c...',
+            },
+            txBase64: '26pM95XT8BuZ...',
+            network: 'solana',
+            paymentType: 'SOL',
+          },
+          paymentRequirements: {
+            amount: 749,
+            recipient: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR',
+            nonce: '1762210242077-0.4928767730868422',
+          },
+        },
+      },
+      XLabsPaymentPayload: {
+        type: 'object',
+        required: ['signedIntent', 'txBase64', 'network'],
+        properties: {
+          signedIntent: {
+            $ref: '#/components/schemas/SignedIntent',
+          },
+          txBase64: {
+            type: 'string',
+            description: 'Base58-encoded serialized Solana transaction containing SOL transfer',
+            example: '26pM95XT8BuZsyTZtR4R...',
+          },
+          network: {
+            type: 'string',
+            description: 'Network name (will be normalized to solana-mainnet)',
+            enum: ['solana', 'solana-mainnet', 'solana-devnet'],
+            example: 'solana',
+          },
+          paymentType: {
+            type: 'string',
+            description: 'Optional: Payment token type',
+            enum: ['SOL', 'USDC'],
+            example: 'SOL',
+          },
+        },
+      },
+      PayAIPaymentPayload: {
+        type: 'object',
+        required: ['signedIntent', 'network', 'facilitator'],
+        properties: {
+          signedIntent: {
+            $ref: '#/components/schemas/SignedIntent',
+          },
+          network: {
+            type: 'string',
+            description: 'Network name',
+            enum: ['solana', 'solana-mainnet'],
+            example: 'solana',
+          },
+          facilitator: {
+            type: 'string',
+            description: 'Facilitator identifier',
+            enum: ['payai'],
+            example: 'payai',
+          },
+          treasury: {
+            type: 'string',
+            description: 'PayAI treasury address',
+            example: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR',
+          },
+        },
+      },
+      SignedIntent: {
+        type: 'object',
+        required: ['publicKey', 'signature'],
+        properties: {
+          publicKey: {
+            type: 'string',
+            description: 'Base58-encoded Solana public key of the payer',
+            example: '3HBV2F9C25k8169rKv6FDqaFHj52NYH5JJjFYDo5nAZ',
+          },
+          signature: {
+            type: 'string',
+            description: 'Base58-encoded ed25519 signature of the payment intent message',
+            example: '5x1y2z3a4b5c6d7e8f9g...',
+          },
+        },
+      },
+      PaymentRequirements: {
+        type: 'object',
+        required: ['amount', 'recipient', 'nonce'],
+        properties: {
+          amount: {
+            type: 'number',
+            description: 'Payment amount in base units (lamports for SOL, micro-USDC for USDC)',
+            example: 749,
+          },
+          recipient: {
+            type: 'string',
+            description: 'Facilitator wallet address receiving the payment',
+            example: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR',
+          },
+          nonce: {
+            type: 'string',
+            description: 'Unique nonce to prevent replay attacks',
+            example: '1762210242077-0.4928767730868422',
+          },
+          resource: {
+            type: 'string',
+            description: 'Optional: Endpoint being accessed',
+            example: '/rpc',
+          },
+          network: {
+            type: 'string',
+            description: 'Optional: Network identifier',
+            example: 'solana',
+          },
+        },
       },
     },
   },
