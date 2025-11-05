@@ -419,6 +419,11 @@
         <li><a href="#python">Python</a></li>
         <li><a href="#curl">cURL</a></li>
       </ul>
+      
+      <h3>Support</h3>
+      <ul>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
     </aside>
 
     <!-- Main Content -->
@@ -544,6 +549,11 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
                 <td><span class="parameter-name">preferences</span><span class="optional">optional</span></td>
                 <td>object</td>
                 <td>Routing preferences (see <a href="#routing" style="color: #a78bfa;">Routing Strategies</a>)</td>
+              </tr>
+              <tr>
+                <td><span class="parameter-name">facilitator</span><span class="optional">optional</span></td>
+                <td>string</td>
+                <td>Payment facilitator: "xlab" (X-Labs SOL) or "payai" (PayAI USDC). <strong>Important for SOL payments!</strong></td>
               </tr>
             </tbody>
           </table>
@@ -1038,6 +1048,295 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
           Need help? Check out <a href="https://github.com/x402-labs" style="color: #a78bfa;">GitHub</a> or visit the 
           <a href="/demo" style="color: #a78bfa;">Live Demo</a>
         </p>
+      </section>
+
+      <!-- FAQ Section -->
+      <section id="faq" class="section">
+        <h2>Frequently Asked Questions (FAQ)</h2>
+
+        <div class="endpoint-card">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Payment & Facilitators</h3>
+          
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Why am I getting "Payment verification failed" with SOL payments?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> You must specify <span class="inline-code">"facilitator": "xlab"</span> in your request body for SOL payments. 
+            Without this, the system defaults to PayAI Network, which expects USDC payments and will fail when receiving SOL.
+          </p>
+<pre><code>// ✅ Correct - Specify facilitator for SOL
+{
+  "method": "getSlot",
+  "params": [],
+  "chain": "solana",
+  "facilitator": "xlab"  // ← Required for SOL payments!
+}</code></pre>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What's the difference between X-Labs and PayAI facilitators?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> They use different payment tokens:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li><strong>X-Labs ("xlab"):</strong> Uses SOL for payments. You send a signed SOL transfer transaction.</li>
+            <li><strong>PayAI ("payai"):</strong> Uses USDC for payments. The PayAI SDK handles USDC transfers for you.</li>
+          </ul>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Can I send more lamports than requested (e.g., include rent-exemption)?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Yes, for X-Labs facilitator. The verification checks for a valid SOL transfer to the correct recipient,
+            but doesn't validate the exact lamport amount. Sending 890880 lamports instead of 749 is acceptable.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What encoding should I use for signatures and transactions?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Use <strong>base58</strong> encoding for all Solana-related fields:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li><span class="inline-code">signedIntent.publicKey</span> - base58</li>
+            <li><span class="inline-code">signedIntent.signature</span> - base58</li>
+            <li><span class="inline-code">txBase64</span> - base58 (despite the name!)</li>
+          </ul>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Should network be "solana" or "solana-mainnet"?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Either works! The backend automatically normalizes "solana" to "solana-mainnet".
+          </p>
+        </div>
+
+        <div class="endpoint-card" style="margin-top: 2rem;">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Pricing & Payments</h3>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Why does the payment show 749 lamports but costs say $0.00015?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> The amount in the 402 response is in base units:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li><strong>SOL:</strong> 749 lamports = 0.000000749 SOL ≈ $0.00015 USD (@ $200/SOL)</li>
+            <li><strong>USDC:</strong> 150 micro-USDC = 0.000150 USDC = $0.00015 USD (1:1)</li>
+          </ul>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How are prices calculated for SOL payments?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Provider costs are in USD. For SOL payments, we convert USD to SOL using an approximate rate of $200/SOL.
+            For example: $0.00015 USD ÷ $200/SOL = 0.000000749 SOL = 749 lamports.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Which facilitator should I use?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Depends on your preference:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li><strong>X-Labs ("xlab"):</strong> If you want to pay with SOL directly</li>
+            <li><strong>PayAI ("payai"):</strong> If you want to pay with USDC (recommended for stable pricing)</li>
+          </ul>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Are payments refundable if the RPC call fails?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> No, payments are final once settled on-chain. However, if payment verification fails BEFORE settlement,
+            no transaction is broadcast and you don't lose funds.
+          </p>
+        </div>
+
+        <div class="endpoint-card" style="margin-top: 2rem;">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Technical Implementation</h3>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What message should I sign for the payment intent?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Sign this exact JSON structure:
+          </p>
+<pre><code>{
+  "amount": 749,  // From 402 response maxAmountRequired
+  "to": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",  // payTo address
+  "nonce": "1762303412466-0.7514463157105271",  // From 402 response extra.nonce
+  "resource": "/rpc"
+}
+
+// Then:
+const messageBytes = new TextEncoder().encode(JSON.stringify(intentMessage));
+const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+const signatureBase58 = bs58.encode(signature);</code></pre>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Is payment verification synchronous or asynchronous?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Verification is <strong>synchronous</strong> and completes in less than 1 second. 
+            You get an immediate response (200 or 402). No polling or waiting required.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Does the backend check my payment on-chain?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> For X-Labs, the backend:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Verifies your signature on the payment intent</li>
+            <li>Validates your transaction structure</li>
+            <li>Optionally simulates the transaction</li>
+            <li>Broadcasts YOUR signed transaction to the network</li>
+            <li>Waits for on-chain confirmation</li>
+          </ul>
+          <p style="color: #94a3b8; margin-top: 1rem;">
+            The backend doesn't query for pre-existing transactions - it broadcasts the transaction you provide in <span class="inline-code">txBase64</span>.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: My transaction is already confirmed on-chain. Why does verification fail?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> If you broadcast the transaction yourself BEFORE sending it to the backend, 
+            the backend will fail when trying to broadcast it again (duplicate transaction error). 
+            Instead, send the SIGNED transaction to the backend via <span class="inline-code">txBase64</span>, 
+            and let the backend broadcast it during settlement.
+          </p>
+        </div>
+
+        <div class="endpoint-card" style="margin-top: 2rem;">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Troubleshooting</h3>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "Network not supported: solana"</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> This is fixed in the latest version. Both "solana" and "solana-mainnet" are now accepted and auto-normalized.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "X-Labs facilitator not available"</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> The backend is missing the <span class="inline-code">SOLANA_PRIVATE_KEY</span> environment variable. 
+            X-Labs facilitator requires a Solana keypair to be configured on the server. Use PayAI instead or contact the server administrator.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "Invalid signature on payment intent"</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Check that:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Payment intent message matches exactly: <span class="inline-code">{"amount":749,"to":"...","nonce":"...","resource":"/rpc"}</span></li>
+            <li>Using the exact nonce from <span class="inline-code">accepts[0].extra.nonce</span></li>
+            <li>Signature is ed25519 (64 bytes)</li>
+            <li>Signature is base58-encoded</li>
+            <li>PublicKey matches the signer</li>
+          </ul>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "Simulation error: failed to get recent blockhash: Error: 429"</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> This is a rate limit error during transaction simulation, but it's handled gracefully. 
+            The verification will skip simulation and proceed with signature validation only. Your payment should still succeed.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How do I know which facilitator is available?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Check the 402 response:
+          </p>
+<pre><code>"extra": {
+  "facilitator": {
+    "primary": "X-Labs solana network",  // Primary facilitator
+    "type": "xlab",                       // Use this value
+    "fallback": "PayAI Network"           // Backup if primary fails
+  }
+}</code></pre>
+          <p style="color: #94a3b8; margin-top: 1rem;">
+            Use the <span class="inline-code">type</span> value in your request body: <span class="inline-code">"facilitator": "xlab"</span>
+          </p>
+        </div>
+
+        <div class="endpoint-card" style="margin-top: 2rem;">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Provider Selection</h3>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How do I use QuickNode's Metaplex DAS API?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Use the <span class="inline-code">preferredProviders</span> preference:
+          </p>
+<pre><code>{
+  "method": "getAssetSignatures",
+  "params": [{"id": "HhbYrhZZ...", "limit": 10}],
+  "chain": "solana",
+  "preferences": {
+    "preferredProviders": ["quicknode-solana"]
+  },
+  "facilitator": "xlab"  // or "payai"
+}</code></pre>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Which provider will be selected if I don't specify preferences?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> By default, the system uses "highest-priority" strategy:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Helius (priority: 100) - Usually selected first for Solana</li>
+            <li>QuickNode Base (priority: 80)</li>
+            <li>Triton One (priority: 70)</li>
+            <li>QuickNode Solana (priority: 65)</li>
+          </ul>
+          <p style="color: #94a3b8; margin-top: 1rem;">
+            All providers are health-checked every 60 seconds. Only active providers are used.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Can I force a specific provider?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Yes, use <span class="inline-code">preferredProviders</span>:
+          </p>
+<pre><code>{
+  "method": "getSlot",
+  "params": [],
+  "chain": "solana",
+  "preferences": {
+    "preferredProviders": ["triton-solana"]  // Force Triton One
+  }
+}</code></pre>
+        </div>
+
+        <div class="endpoint-card" style="margin-top: 2rem;">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Advanced</h3>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Do I need to wait after my transaction confirms on-chain?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> No! Don't broadcast your transaction yourself. Instead:
+          </p>
+          <ol style="list-style-type: decimal; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Sign the transaction with your wallet</li>
+            <li>Serialize and encode to base58</li>
+            <li>Send in <span class="inline-code">txBase64</span> field</li>
+            <li>Backend broadcasts and waits for confirmation</li>
+          </ol>
+          <p style="color: #94a3b8; margin-top: 1rem;">
+            If you broadcast before sending to backend, you'll get "transaction already processed" errors.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How do batch payments work?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> See the <a href="#batch-payments" style="color: #a78bfa;">Batch Payments</a> section. 
+            You can pre-pay for 1,000 calls at a 20% discount ($0.08 instead of $0.10), then use the batch ID for subsequent calls.
+          </p>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What's the difference between costPerCall in provider config?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> All costs are in USD:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Triton One: $0.0001 USD = 500 lamports (SOL) or 100 micro-USDC</li>
+            <li>Helius: $0.00015 USD = 749 lamports (SOL) or 150 micro-USDC</li>
+            <li>QuickNode: $0.0002 USD = 1,000 lamports (SOL) or 200 micro-USDC</li>
+          </ul>
+        </div>
+
+        <div class="endpoint-card" style="margin-top: 2rem;">
+          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Getting Help</h3>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Where can I get support?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Multiple channels available:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li><strong>Email:</strong> <a href="mailto:operations@x402labs.cloud" style="color: #a78bfa;">operations@x402labs.cloud</a></li>
+            <li><strong>Documentation:</strong> <a href="/api-docs" style="color: #a78bfa;">Swagger UI</a> for interactive API explorer</li>
+            <li><strong>Examples:</strong> <a href="/demo" style="color: #a78bfa;">Live Demo</a> with working code examples</li>
+            <li><strong>GitHub:</strong> <a href="https://github.com/x402-labs" target="_blank" style="color: #a78bfa;">Issues and Discussions</a></li>
+            <li><strong>Twitter:</strong> <a href="https://x.com/x402labs" target="_blank" style="color: #a78bfa;">@x402labs</a></li>
+          </ul>
+
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Can I test without spending real SOL/USDC?</h4>
+          <p style="color: #94a3b8; margin-bottom: 1rem;">
+            <strong>A:</strong> Payments are on mainnet and use real tokens. However, amounts are micro-payments ($0.0001-$0.0002 per call).
+            For testing, you can:
+          </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>Use the <a href="/demo" style="color: #a78bfa;">browser demo</a> to see the flow</li>
+            <li>Make a single call (~$0.00015) to test integration</li>
+            <li>Check provider health at <a href="/providers-ui" style="color: #a78bfa;">/providers</a> without payment</li>
+          </ul>
+        </div>
       </section>
     </main>
   </div>
