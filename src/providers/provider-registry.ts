@@ -210,7 +210,7 @@ export class ProviderRegistry {
       if (error.name === 'AbortError' || error.message.includes('timeout')) {
         console.error(`❌ Health check timeout for ${provider.name} (${latency}ms)`);
       } else {
-        console.error(`❌ Health check error for ${provider.name}:`, error.message);
+      console.error(`❌ Health check error for ${provider.name}:`, error.message);
       }
     }
   }
