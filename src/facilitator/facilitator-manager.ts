@@ -447,7 +447,8 @@ export function createFacilitatorManager(): FacilitatorManager {
     networks: [
       {
         name: 'solana-mainnet',
-        rpcUrl: process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
+        // Use Helius for facilitator operations to avoid rate limits
+        rpcUrl: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
         cluster: 'mainnet-beta',
       },
       {

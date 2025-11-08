@@ -8,6 +8,9 @@
 // Load environment variables from .env file
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { Keypair } from '@solana/web3.js';
+import bs58 from 'bs58';
+
 try {
   const envPath = join(__dirname, '../.env');
   const envFile = readFileSync(envPath, 'utf8');
@@ -22,6 +25,19 @@ try {
     }
   });
   console.log('✅ Environment variables loaded from .env');
+  
+  // Automatically derive X402_WALLET from SOLANA_PRIVATE_KEY if not set
+  if (process.env.SOLANA_PRIVATE_KEY && !process.env.X402_WALLET) {
+    try {
+      const secretKey = bs58.decode(process.env.SOLANA_PRIVATE_KEY);
+      const keypair = Keypair.fromSecretKey(secretKey);
+      const publicKey = keypair.publicKey.toBase58();
+      process.env.X402_WALLET = publicKey;
+      console.log(`✅ X402_WALLET auto-derived from SOLANA_PRIVATE_KEY: ${publicKey}`);
+    } catch (err) {
+      console.warn('⚠️  Failed to derive X402_WALLET from SOLANA_PRIVATE_KEY');
+    }
+  }
 } catch (err) {
   console.warn('⚠️  No .env file found, using system environment variables');
 }
