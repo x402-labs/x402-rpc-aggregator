@@ -71,54 +71,81 @@ export class PayAISdkFacilitator {
     paymentRequirements: any
   ): Promise<VerifyResult> {
     try {
-      console.log(`🔍 PayAI SDK: Starting verification`);
+      console.log(`🔍 PayAI: Starting LOCAL verification (not using PayAI Network)`);
       console.log(`   Payment payload:`, Object.keys(paymentPayload));
       console.log(`   Requirements:`, paymentRequirements);
 
-      // Convert our payment payload to x402-solana format
-      // The SDK expects the payment header as BASE64-encoded string
-      const paymentHeaderJson = JSON.stringify({
-        paymentPayload,
-        paymentRequirements,
-      });
-      
-      // CRITICAL: PayAI SDK expects base64-encoded payment header!
-      const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
-      
-      console.log(`   Payment header (JSON):`, paymentHeaderJson.substring(0, 100) + '...');
-      console.log(`   Payment header (base64):`, paymentHeader.substring(0, 50) + '...');
+      // Verify signature locally using nacl instead of calling PayAI Network
+      // This is because we sign a different message format than what PayAI SDK expects
+      const nacl = require('tweetnacl');
+      const bs58 = require('bs58');
 
-      // Create payment requirements in SDK format
-      // NOTE: paymentRequirements.amount is ALREADY in base units (micro-USDC or lamports)
-      // Do NOT multiply by 1e6 again!
-      const sdkRequirements = await this.handler.createPaymentRequirements({
-        price: {
-          amount: String(Math.floor(paymentRequirements.amount)), // Already in micro-USDC
-          asset: {
-            address: paymentPayload.tokenMint || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC mainnet
-          },
-        },
-        network: this.network,
-        config: {
-          description: paymentRequirements.resource || 'RPC Access',
-          resource: paymentRequirements.resource || '/rpc',
-        },
-      });
-
-      // Verify payment using SDK
-      const isValid = await this.handler.verifyPayment(paymentHeader, sdkRequirements);
-
-      console.log(`   Verification result: ${isValid}`);
-
-      if (!isValid) {
+      const { signedIntent } = paymentPayload;
+      if (!signedIntent?.publicKey || !signedIntent?.signature) {
         return {
           valid: false,
-          error: 'Payment verification failed via PayAI SDK',
+          error: 'Missing signedIntent publicKey or signature'
         };
       }
 
+      // Ensure signature is a string (might be Buffer from JSON parsing)
+      if (Buffer.isBuffer(signedIntent.signature)) {
+        console.log(`⚠️  Signature is Buffer, converting to base58...`);
+        signedIntent.signature = bs58.encode(signedIntent.signature);
+      } else if (signedIntent.signature instanceof Uint8Array) {
+        console.log(`⚠️  Signature is Uint8Array, converting to base58...`);
+        signedIntent.signature = bs58.encode(signedIntent.signature);
+      } else if (typeof signedIntent.signature !== 'string') {
+        console.log(`⚠️  Signature is ${typeof signedIntent.signature}, converting to string...`);
+        signedIntent.signature = String(signedIntent.signature);
+      }
+      console.log(`   Signature type: ${typeof signedIntent.signature}, length: ${signedIntent.signature.length}`);
+
+      // Step 1: Reconstruct the message that was signed
+      // Client signed: {amount, to, nonce, resource}
+      const intentMessage = JSON.stringify({
+        amount: paymentRequirements.amount,
+        to: paymentRequirements.recipient,
+        nonce: paymentRequirements.nonce,
+        resource: paymentRequirements.resource
+      });
+      
+      console.log(`🔐 Verifying signature locally...`);
+      console.log(`   Message that was signed:`, intentMessage);
+
+      // Step 2: Convert to bytes for verification
+      const messageBytes = new TextEncoder().encode(intentMessage);
+      const signatureBytes = bs58.decode(signedIntent.signature);
+      const publicKeyBytes = bs58.decode(signedIntent.publicKey);
+
+      console.log(`   Message bytes length: ${messageBytes.length}`);
+      console.log(`   Signature bytes length: ${signatureBytes.length}`);
+      console.log(`   PublicKey bytes length: ${publicKeyBytes.length}`);
+
+      // Step 3: Verify ed25519 signature
+      const isValidSignature = nacl.sign.detached.verify(
+        messageBytes,
+        signatureBytes,
+        publicKeyBytes
+      );
+
+      console.log(`   Signature verification result: ${isValidSignature}`);
+
+      if (!isValidSignature) {
+        console.error(`❌ Signature verification failed!`);
+        console.error(`   Expected message: ${intentMessage}`);
+        console.error(`   Signature: ${signedIntent.signature.substring(0, 50)}...`);
+        console.error(`   PublicKey: ${signedIntent.publicKey}`);
+        return {
+          valid: false,
+          error: 'Invalid payment intent signature',
+        };
+      }
+
+      console.log(`✅ Signature is valid!`);
+
       // Extract payer from payment payload
-      const payer = paymentPayload.signedIntent?.publicKey || paymentPayload.payer;
+      const payer = signedIntent.publicKey;
 
       return {
         valid: true,

@@ -77,6 +77,79 @@
   <!-- Use v1.20.3 - Ancient stable version, proven to work with Phantom -->
   <script src="https://unpkg.com/@solana/web3.js@1.20.3/lib/index.iife.min.js"></script>
   
+  <!-- SPL Token functions (manual implementation since CDN doesn't have browser build) -->
+  <script>
+    // Manual implementation of SPL Token functions we need
+    window.splToken = {
+      TOKEN_PROGRAM_ID: new window.solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+      ASSOCIATED_TOKEN_PROGRAM_ID: new window.solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+      SYSTEM_PROGRAM_ID: new window.solanaWeb3.PublicKey('11111111111111111111111111111111'),
+      SYSVAR_RENT_PUBKEY: new window.solanaWeb3.PublicKey('SysvarRent111111111111111111111111111111111'),
+      
+      // Find associated token address for an SPL token
+      async getAssociatedTokenAddress(mint, owner) {
+        const [address] = await window.solanaWeb3.PublicKey.findProgramAddress(
+          [
+            owner.toBuffer(),
+            this.TOKEN_PROGRAM_ID.toBuffer(),
+            mint.toBuffer(),
+          ],
+          this.ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        
+        return address;
+      },
+      
+      // Create associated token account instruction
+      createAssociatedTokenAccountInstruction(payer, associatedToken, owner, mint) {
+        const keys = [
+          { pubkey: payer, isSigner: true, isWritable: true },
+          { pubkey: associatedToken, isSigner: false, isWritable: true },
+          { pubkey: owner, isSigner: false, isWritable: false },
+          { pubkey: mint, isSigner: false, isWritable: false },
+          { pubkey: this.SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: this.TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: this.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        ];
+        
+        return new window.solanaWeb3.TransactionInstruction({
+          keys,
+          programId: this.ASSOCIATED_TOKEN_PROGRAM_ID,
+          data: new Uint8Array(0), // No data needed for create ATA
+        });
+      },
+      
+      // Create SPL token transfer instruction
+      createTransferInstruction(source, destination, owner, amount) {
+        const keys = [
+          { pubkey: source, isSigner: false, isWritable: true },
+          { pubkey: destination, isSigner: false, isWritable: true },
+          { pubkey: owner, isSigner: true, isWritable: false },
+        ];
+        
+        // SPL Token Transfer instruction data
+        // Instruction discriminator: 3 (Transfer)
+        // Amount: u64 (8 bytes, little-endian)
+        const dataLayout = new Uint8Array(9);
+        dataLayout[0] = 3; // Transfer instruction
+        
+        // Write amount as little-endian u64
+        const amountBigInt = BigInt(amount);
+        for (let i = 0; i < 8; i++) {
+          dataLayout[1 + i] = Number((amountBigInt >> BigInt(8 * i)) & BigInt(0xff));
+        }
+        
+        return new window.solanaWeb3.TransactionInstruction({
+          keys,
+          programId: this.TOKEN_PROGRAM_ID,
+          data: dataLayout,
+        });
+      }
+    };
+    
+    console.log('✅ SPL Token functions loaded (manual implementation)');
+  </script>
+  
   <!-- Inline bs58 implementation (guaranteed to work) -->
   <script>
     // Minimal bs58 encode/decode for browser (no dependencies)
@@ -732,75 +805,124 @@
         const { Transaction, PublicKey, SystemProgram } = window.solanaWeb3;
 
         // === PayAI NETWORK (USDC on Solana) ===
+        // PayAI x402-solana SDK requires client to build USDC transfer transaction
         if (facilitator === 'payai') {
-          console.log('💳 Using PayAI Network facilitator');
-          console.log('   Treasury: 26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR');
-          console.log('   Network: solana-mainnet');
-          console.log('   Note: PayAI handles USDC transfer - no transaction building needed!');
+          console.log('💳 Using PayAI Network facilitator (USDC)');
+          console.log('   Building USDC transfer transaction...');
           
-          // PayAI uses signed payment intent - backend handles everything via PayAI SDK
-          const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
-          // Standard x402 payment intent format (4 fields only)
-          const paymentIntent = {
-            amount: parseFloat(paymentDetails.maxAmountRequired),
-            to: paymentDetails.payTo,
-            nonce,
-            resource: paymentDetails.resource || 'https://x402labs.cloud/rpc'
-          };
+          const microUSDC = Math.floor(parseFloat(paymentDetails.maxAmountRequired));
+          console.log(`   Amount: ${microUSDC} micro-USDC (${microUSDC / 1e6} USDC)`);
+          console.log('   To:', paymentDetails.payTo);
           
-          console.log('📝 Signing payment intent:', paymentIntent);
-          const intentMsgString = JSON.stringify(paymentIntent);
-          const intentMsg = new TextEncoder().encode(intentMsgString);
+          // USDC mainnet mint
+          const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
           
-          // Phantom's signMessage can behave differently - handle all cases
-          let signature;
+          // Get associated token accounts (using window.splToken global)
+          const fromATA = await window.splToken.getAssociatedTokenAddress(
+            USDC_MINT,
+            wallet.publicKey
+          );
+          
+          const toATA = await window.splToken.getAssociatedTokenAddress(
+            USDC_MINT,
+            new PublicKey(paymentDetails.payTo)
+          );
+          
+          console.log('   From USDC Account:', fromATA.toBase58());
+          console.log('   To USDC Account:', toATA.toBase58());
+          
+          // Check if recipient's USDC account exists
+          console.log('   Checking if treasury USDC account exists...');
+          const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
+          let needsAccountCreation = false;
+          
           try {
-            console.log('🔐 Requesting Phantom to sign message...');
-            console.log('   Message:', intentMsgString);
-            console.log('   Message bytes:', intentMsg.length);
-            
-            const signResult = await wallet.signMessage(intentMsg);
-            
-            // Handle different Phantom response formats
-            if (signResult && signResult.signature) {
-              // Format 1: { signature: Uint8Array, publicKey: PublicKey }
-              signature = bs58.encode(signResult.signature);
-              console.log('✅ Got signature from result.signature');
-            } else if (signResult instanceof Uint8Array) {
-              // Format 2: Direct Uint8Array
-              signature = bs58.encode(signResult);
-              console.log('✅ Got signature as Uint8Array');
+            const accountInfo = await connection.getAccountInfo(toATA);
+            if (!accountInfo) {
+              console.log('   ⚠️  Treasury USDC account does not exist - will create it');
+              needsAccountCreation = true;
             } else {
-              throw new Error('Unexpected signature format from Phantom');
+              console.log('   ✅ Treasury USDC account exists');
             }
-            
-            console.log('✅ Payment intent signed successfully');
-            console.log('   Signature (base58):', signature.substring(0, 20) + '...');
-          } catch (signError) {
-            console.error('❌ Phantom signMessage failed:', signError);
-            console.error('   Error code:', signError.code);
-            console.error('   Error message:', signError.message);
-            
-            // User-friendly error message
-            throw new Error(`Failed to sign payment intent. ${signError.code === -32603 ? 'Phantom rejected the request.' : signError.message || 'Unknown error'}`);
+          } catch (err) {
+            console.log('   ⚠️  Could not check account, will attempt to create');
+            needsAccountCreation = true;
           }
+          
+          // Build USDC transfer transaction
+          const tx = new Transaction();
+          
+          // Add create account instruction if needed
+          if (needsAccountCreation) {
+            console.log('   Adding instruction to create treasury USDC account...');
+            tx.add(
+              window.splToken.createAssociatedTokenAccountInstruction(
+                wallet.publicKey,  // payer
+                toATA,             // associated token account
+                new PublicKey(paymentDetails.payTo),  // owner
+                USDC_MINT          // mint
+              )
+            );
+          }
+          
+          // Add USDC transfer instruction
+          tx.add(
+            window.splToken.createTransferInstruction(
+              fromATA,           // source
+              toATA,             // destination  
+              wallet.publicKey,  // owner
+              microUSDC          // amount in micro-USDC
+            )
+          );
+          
+          // Get fresh blockhash
+          const response = await fetch('http://localhost:3000/solana-rpc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'getLatestBlockhash',
+              params: []
+            })
+          });
+          const { result } = await response.json();
+          
+          tx.recentBlockhash = result.value.blockhash;
+          tx.feePayer = wallet.publicKey;
+          
+          console.log('✅ USDC transfer transaction built');
+          console.log('   Requesting signature from Phantom...');
+          
+          // Sign transaction
+          const signed = await wallet.signTransaction(tx);
+          console.log('✅ Transaction signed successfully');
+          
+          // Serialize
+          const serialized = signed.serialize();
+          const txBase64 = bs58.encode(serialized);
+          
+          // Extract transaction signature
+          const txSignature = bs58.encode(signed.signatures[0].signature);
+          
+          const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
           
           return {
             paymentPayload: {
               signedIntent: {
                 publicKey: wallet.publicKey.toBase58(),
-                signature
+                signature: txSignature
               },
+              txBase64,
               network: paymentDetails.network,
               facilitator: 'payai',
-              treasury: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR'
+              paymentType: 'USDC'
             },
             paymentRequirements: {
-              amount: parseFloat(paymentDetails.maxAmountRequired),
+              amount: microUSDC,
               recipient: paymentDetails.payTo,
               nonce,
-              resource: paymentDetails.resource || 'https://x402labs.cloud/rpc',
-              network: 'solana'
+              resource: paymentDetails.resource || 'https://x402labs.cloud/rpc'
             }
           };
         }

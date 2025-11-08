@@ -57,8 +57,9 @@ export interface PaymentPayload {
     publicKey: string;
     signature: string;
   };
-  txBase64: string;
+  txBase64?: string; // Optional - PayAI doesn't provide this
   network?: string;
+  facilitator?: string;
 }
 
 export interface PaymentRequirements {
@@ -167,6 +168,16 @@ export class SolanaFacilitator {
       }
       
       console.log(`✅ Step 1 passed: Public key validated`);
+
+      // Check if txBase64 is provided (required for self-hosted verification)
+      if (!txBase64) {
+        console.log(`⚠️  No txBase64 provided - this is not a self-hosted payment`);
+        console.log(`   Facilitator indicated: ${paymentPayload.facilitator || 'unknown'}`);
+        return { 
+          valid: false, 
+          error: 'txBase64 required for self-hosted Solana verification' 
+        };
+      }
 
       // Step 2: Deserialize and validate transaction
       console.log(`📦 Step 2: Deserializing transaction...`);
@@ -291,6 +302,14 @@ export class SolanaFacilitator {
       const conn = this.connections.get(normalizedNetwork);
       if (!conn) {
         return { settled: false, error: `Unsupported network: ${normalizedNetwork}` };
+      }
+
+      // Check if txBase64 is provided (should have been validated in verifyPayment)
+      if (!txBase64) {
+        return { 
+          settled: false, 
+          error: 'txBase64 required for self-hosted Solana settlement' 
+        };
       }
 
       // Deserialize the signed transaction
