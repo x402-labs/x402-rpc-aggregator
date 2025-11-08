@@ -13,6 +13,7 @@ import { FacilitatorManager } from '../facilitator/facilitator-manager';
 import { IntelligentRouter } from '../router';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { BatchPayment, X402Response, X402Accepts, RPCProvider } from '../types';
+import { jupiterOracle } from '../pricing/jupiter-oracle';
 
 export interface X402Request extends Request {
   x402?: {
@@ -81,7 +82,7 @@ export function createUnifiedX402Middleware(
             console.log(`🎫 Batch payment: ${batch.callsRemaining}/${batch.totalCalls} remaining`);
             return next();
           } else {
-            const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
+            const x402Response = await createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
             return res.status(402).json({
               ...x402Response,
               error: 'Batch expired or depleted',
@@ -94,7 +95,7 @@ export function createUnifiedX402Middleware(
 
       // === 402 CHALLENGE ===
       if (!paymentHeader) {
-        const x402Response = createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
+        const x402Response = await createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
         return res.status(402).json(x402Response);
       }
 
@@ -111,14 +112,27 @@ export function createUnifiedX402Middleware(
         console.log(`🔍 Starting payment verification...`);
         console.log(`   Payment payload keys:`, Object.keys(payload.paymentPayload || {}));
         console.log(`   Payment requirements:`, payload.paymentRequirements);
+        console.log(`   Expected cost (USD):`, paymentAmount);
+        
+        // IMPORTANT: Use client's payment requirements for signature verification
+        // The signature was created with the client's amount value, so we must verify with it
+        console.log(`🔍 Payment payload structure:`, {
+          hasSignedIntent: !!payload.paymentPayload?.signedIntent,
+          signedIntentKeys: payload.paymentPayload?.signedIntent ? Object.keys(payload.paymentPayload.signedIntent) : [],
+          signatureType: typeof payload.paymentPayload?.signedIntent?.signature,
+          signatureLength: payload.paymentPayload?.signedIntent?.signature?.length,
+          signaturePreview: typeof payload.paymentPayload?.signedIntent?.signature === 'string' 
+            ? payload.paymentPayload.signedIntent.signature.substring(0, 20) + '...'
+            : 'NOT A STRING!',
+          publicKeyType: typeof payload.paymentPayload?.signedIntent?.publicKey,
+          hasTxBase64: !!payload.paymentPayload?.txBase64,
+          facilitator: payload.paymentPayload?.facilitator || clientFacilitator,
+        });
         
         const verifyRes = await facilitatorManager.verifyPayment(
           payload.paymentPayload,
-          {
-            ...payload.paymentRequirements,
-            amount: paymentAmount,
-          },
-          clientFacilitator // Pass client's preference
+          payload.paymentRequirements,  // Use client's values (what they signed)
+          clientFacilitator
         );
 
         console.log(`🔍 Verification result:`, { valid: verifyRes.valid || verifyRes.isValid, error: verifyRes.error });
@@ -139,11 +153,8 @@ export function createUnifiedX402Middleware(
         console.log(`💰 Starting payment settlement...`);
         const settleRes = await facilitatorManager.settlePayment(
           payload.paymentPayload,
-          {
-            ...payload.paymentRequirements,
-            amount: paymentAmount,
-          },
-          clientFacilitator // Pass client's preference
+          payload.paymentRequirements,  // Use client's values
+          clientFacilitator
         );
 
         console.log(`💰 Settlement result:`, { settled: settleRes.settled || settleRes.success, error: settleRes.error });
@@ -216,13 +227,13 @@ export function createUnifiedX402Middleware(
  * Create x402scan-compliant payment response
  * Based on: https://www.x402scan.com/resources/register
  */
-function createX402Response(
+async function createX402Response(
   provider: RPCProvider,
   chain: string,
   resource: string,
   facilitatorManager: FacilitatorManager,
   clientFacilitator?: string
-): X402Response {
+): Promise<X402Response> {
   const facilitatorInfo = facilitatorManager.getInfo();
   
   // Determine which facilitator will be used (client preference or default)
@@ -284,39 +295,44 @@ function createX402Response(
 
   // Convert USD amount to base unit (micro-USDC, lamports for SOL, wei for ETH, etc.)
   // costPerCall is always in USD - need to convert based on asset type
-  const getAmountInBaseUnit = (usdAmount: number, asset: string): string => {
+  const getAmountInBaseUnit = async (usdAmount: number, asset: string): Promise<string> => {
     switch (asset) {
-      case 'SOL':
-        // For X-Labs facilitator: Convert USD to SOL first
-        // Approximate SOL price: $150-$250 (use $200 as mid-range)
-        const SOL_USD_PRICE = 200; // Should ideally fetch from oracle, but $200 is reasonable
+      case 'SOL': {
+        // For X-Labs facilitator: Convert USD to SOL using REAL-TIME price from Jupiter
+        const priceData = await jupiterOracle.getSOLPrice();
+        const SOL_USD_PRICE = priceData.price;
         const solAmount = usdAmount / SOL_USD_PRICE;
-        // Convert SOL to lamports: 1 SOL = 1,000,000,000 lamports (1e9)
-        // Example: $0.00015 USD / $200 = 0.00000075 SOL = 750 lamports
-        return Math.floor(solAmount * 1e9).toString();
-      case 'ETH':
+        const lamports = Math.floor(solAmount * 1e9);
+        
+        console.log(`💰 Dynamic pricing: $${usdAmount} USD → ${lamports} lamports (SOL @ $${SOL_USD_PRICE.toFixed(2)} from ${priceData.source})`);
+        
+        return lamports.toString();
+      }
+      case 'ETH': {
         // For Ethereum: Convert USD to ETH first
-        // Approximate ETH price: $2000-$4000 (use $3000 as mid-range)
+        // TODO: Add ETH price oracle (use static for now)
         const ETH_USD_PRICE = 3000;
         const ethAmount = usdAmount / ETH_USD_PRICE;
-        // Convert ETH to wei: 1 ETH = 1,000,000,000,000,000,000 wei (1e18)
         return Math.floor(ethAmount * 1e18).toString();
-      case 'USDC':
+      }
+      case 'USDC': {
         // For PayAI facilitator: USDC is 1:1 with USD - perfect for micropayments
         // costPerCall in USD = same amount in USDC
         // 1 USDC = 1,000,000 micro-USDC (1e6)
         // Example: $0.00015 USD = 0.00015 USDC = 150 micro-USDC
         return Math.floor(usdAmount * 1e6).toString();
-      default:
+      }
+      default: {
         // Default to USDC (1e6 decimals)
         return Math.floor(usdAmount * 1e6).toString();
+      }
     }
   };
 
   const accepts: X402Accepts = {
     scheme: 'exact',
     network,
-    maxAmountRequired: getAmountInBaseUnit(provider.costPerCall, asset),
+    maxAmountRequired: await getAmountInBaseUnit(provider.costPerCall, asset),
     resource: `https://x402labs.cloud${resource}`, // Full URL required by x402scan
     description: `RPC access via ${provider.name} for ${chain}`,
     mimeType: 'application/json',

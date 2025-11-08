@@ -43,6 +43,7 @@ export async function proxySolanaRPC(req: Request, res: Response) {
       'getRecentBlockhash',
       'getMinimumBalanceForRentExemption',
       'getTokenAccountsByOwner',
+      'getTokenAccountBalance',  // Added for USDC balance checks
       'getProgramAccounts',
       'getConfirmedTransaction',
       'getFeeForMessage',

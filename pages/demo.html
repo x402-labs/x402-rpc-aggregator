@@ -330,6 +330,17 @@
           ${!balanceCheck.solSufficient ? '<br><span class="text-orange-400 text-xs">⚠️ Low SOL (for X-Labs)</span>' : ''}
           ${!balanceCheck.usdcSufficient ? '<br><span class="text-orange-400 text-xs">⚠️ Low USDC (for PayAI)</span>' : ''}
         `;
+        
+        // Auto-select best facilitator based on balance
+        const facilitatorSelect = document.getElementById('facilitator');
+        if (balanceCheck.solSufficient && !balanceCheck.usdcSufficient) {
+          facilitatorSelect.value = 'xlab';
+          console.log('💡 Auto-selected X-Labs (you have SOL but no USDC)');
+        } else if (balanceCheck.usdcSufficient && !balanceCheck.solSufficient) {
+          facilitatorSelect.value = 'payai';
+          console.log('💡 Auto-selected PayAI (you have USDC but no SOL)');
+        }
+        // If they have both or neither, keep current selection
       } catch (err) {
         document.getElementById('wallet').innerHTML = `<span class="text-red-400">❌ ${err.message}</span>`;
       }
@@ -408,6 +419,20 @@
         document.getElementById('buildTx').classList.add('bg-red-600');
       }
     };
+
+    // Add facilitator change listener to warn about balance
+    document.getElementById('facilitator').addEventListener('change', async (e) => {
+      if (!wallet) return;
+      
+      const facilitator = e.target.value;
+      const balanceCheck = await checkBalance(wallet);
+      
+      if (facilitator === 'payai' && !balanceCheck.usdcSufficient) {
+        alert('⚠️ Warning: You selected PayAI (USDC) but have insufficient USDC.\n\nRecommendation: Use X-Labs (SOL) instead.\n\nOr get USDC by swapping SOL → USDC on Jupiter or Raydium.');
+      } else if (facilitator === 'xlab' && !balanceCheck.solSufficient) {
+        alert('⚠️ Warning: You selected X-Labs (SOL) but have insufficient SOL.\n\nRecommendation: Use PayAI (USDC) instead if you have USDC.');
+      }
+    });
 
     document.getElementById('call').onclick = async () => {
       if (!wallet) return alert('Connect wallet first');
@@ -533,34 +558,38 @@
         
         const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
         
-        // Calculate Associated Token Account (ATA) address manually
-        // This avoids needing the SPL Token library
-        const [ata] = await PublicKey.findProgramAddress(
-          [
-            wallet.publicKey.toBuffer(),
-            new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA').toBuffer(),
-            new PublicKey(USDC_MINT).toBuffer()
-          ],
-          new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL')
-        );
-        
-        const usdcRes = await fetch(SOLANA_RPC_PROXY, {
+        // Use getTokenAccountsByOwner to find all USDC accounts
+        // This is more reliable than calculating ATA manually
+        const usdcAccountsRes = await fetch(SOLANA_RPC_PROXY, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            method: 'getTokenAccountBalance', 
-            params: [ata.toBase58()] 
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getTokenAccountsByOwner',
+            params: [
+              wallet.publicKey.toBase58(),
+              { mint: USDC_MINT },
+              { encoding: 'jsonParsed' }
+            ]
           })
         });
         
-        const usdcData = await usdcRes.json();
+        const usdcAccountsData = await usdcAccountsRes.json();
         let usdcBalance = 0;
-        if (usdcData.result?.value) {
-          usdcBalance = usdcData.result.value.uiAmount || 0;
+        
+        if (usdcAccountsData.result?.value && usdcAccountsData.result.value.length > 0) {
+          // Found USDC account(s) - sum up balances
+          usdcBalance = usdcAccountsData.result.value.reduce((total, account) => {
+            const tokenAmount = account.account.data.parsed.info.tokenAmount.uiAmount;
+            return total + (tokenAmount || 0);
+          }, 0);
+          console.log(`✅ Found ${usdcAccountsData.result.value.length} USDC account(s), total: ${usdcBalance} USDC`);
         } else {
-          console.warn('USDC ATA not found - balance 0 (account may not exist yet)');
+          console.warn('⚠️ No USDC accounts found for this wallet');
         }
-        const minUSDC = 0.02; // Minimum USDC for payments
+        
+        const minUSDC = 0.001; // Minimum USDC for payments (reduced from 0.02)
 
         return {
           solSufficient: solBalanceSOL >= minSOL,
@@ -678,6 +707,12 @@
       try {
         console.log('💰 Building payment for chain:', chain);
         console.log('   Facilitator:', document.getElementById('facilitator').value);
+        console.log('   Payment details:', {
+          maxAmountRequired: paymentDetails.maxAmountRequired,
+          asset: paymentDetails.asset,
+          network: paymentDetails.network,
+          payTo: paymentDetails.payTo?.substring(0, 20) + '...'
+        });
         
       if (chain === 'base') {
           const sig = await window.ethereum.request({
@@ -701,29 +736,60 @@
           console.log('💳 Using PayAI Network facilitator');
           console.log('   Treasury: 26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR');
           console.log('   Network: solana-mainnet');
+          console.log('   Note: PayAI handles USDC transfer - no transaction building needed!');
           
           // PayAI uses signed payment intent - backend handles everything via PayAI SDK
           const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
+          // Standard x402 payment intent format (4 fields only)
           const paymentIntent = {
             amount: parseFloat(paymentDetails.maxAmountRequired),
             to: paymentDetails.payTo,
             nonce,
-            resource: paymentDetails.resource || 'https://x402labs.cloud/rpc',
-            network: 'solana',
-            treasury: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR'
+            resource: paymentDetails.resource || 'https://x402labs.cloud/rpc'
           };
           
           console.log('📝 Signing payment intent:', paymentIntent);
-          const intentMsg = new TextEncoder().encode(JSON.stringify(paymentIntent));
-          const intentSig = await wallet.signMessage(intentMsg, 'utf8');
+          const intentMsgString = JSON.stringify(paymentIntent);
+          const intentMsg = new TextEncoder().encode(intentMsgString);
           
-          console.log(' Payment intent signed');
+          // Phantom's signMessage can behave differently - handle all cases
+          let signature;
+          try {
+            console.log('🔐 Requesting Phantom to sign message...');
+            console.log('   Message:', intentMsgString);
+            console.log('   Message bytes:', intentMsg.length);
+            
+            const signResult = await wallet.signMessage(intentMsg);
+            
+            // Handle different Phantom response formats
+            if (signResult && signResult.signature) {
+              // Format 1: { signature: Uint8Array, publicKey: PublicKey }
+              signature = bs58.encode(signResult.signature);
+              console.log('✅ Got signature from result.signature');
+            } else if (signResult instanceof Uint8Array) {
+              // Format 2: Direct Uint8Array
+              signature = bs58.encode(signResult);
+              console.log('✅ Got signature as Uint8Array');
+            } else {
+              throw new Error('Unexpected signature format from Phantom');
+            }
+            
+            console.log('✅ Payment intent signed successfully');
+            console.log('   Signature (base58):', signature.substring(0, 20) + '...');
+          } catch (signError) {
+            console.error('❌ Phantom signMessage failed:', signError);
+            console.error('   Error code:', signError.code);
+            console.error('   Error message:', signError.message);
+            
+            // User-friendly error message
+            throw new Error(`Failed to sign payment intent. ${signError.code === -32603 ? 'Phantom rejected the request.' : signError.message || 'Unknown error'}`);
+          }
           
           return {
             paymentPayload: {
               signedIntent: {
                 publicKey: wallet.publicKey.toBase58(),
-                signature: bs58.encode(intentSig.signature)
+                signature
               },
               network: paymentDetails.network,
               facilitator: 'payai',
@@ -733,6 +799,7 @@
               amount: parseFloat(paymentDetails.maxAmountRequired),
               recipient: paymentDetails.payTo,
               nonce,
+              resource: paymentDetails.resource || 'https://x402labs.cloud/rpc',
               network: 'solana'
             }
           };
@@ -777,9 +844,9 @@
           const blockhash = blockhashData.result.value.blockhash;
           console.log(' Got blockhash:', blockhash.substring(0, 8) + '...');
           
-          // Build transaction with enough SOL to satisfy Phantom's validation
-          const lamports = 10000000; // 0.01 SOL (definitely enough for rent + fees)
-          console.log('💰 Transfer amount:', lamports, 'lamports (0.01 SOL)');
+          // Use the EXACT payment amount from invoice (more accurate, less suspicious to Phantom)
+          const lamports = parseInt(paymentDetails.maxAmountRequired, 10);
+          console.log('💰 Transfer amount:', lamports, `lamports (${(lamports / 1e9).toFixed(9)} SOL)`);
           
           // Create legacy transaction (most compatible with all Phantom versions)
           const { Transaction: LegacyTransaction } = window.solanaWeb3;
@@ -814,51 +881,66 @@
           let signed;
           try {
             // Request signature from Phantom
+            // Important: User must APPROVE in Phantom popup!
             signed = await wallet.signTransaction(tx);
-            console.log(' Transaction signed successfully! ');
+            console.log('✅ Transaction signed successfully!');
           } catch (signError) {
-            console.error(' Phantom signing STILL failed:', signError);
+            console.error('❌ Phantom signing failed:', signError);
             console.error('   Error code:', signError.code);
             console.error('   Error message:', signError.message);
             
-            // Display error to user in UI
+            // Check if user simply cancelled
+            if (signError.code === 4001 || signError.message?.includes('User rejected')) {
+              document.getElementById('status').innerHTML = `
+                <div class="bg-yellow-900 bg-opacity-30 border border-yellow-500 rounded-lg p-4">
+                  <p class="text-yellow-300 font-semibold mb-2">⚠️ Transaction Cancelled</p>
+                  <p class="text-yellow-200 text-sm">You rejected the transaction in Phantom.</p>
+                  <p class="text-yellow-200 text-sm mt-2">Click "Pay with Phantom" again to retry.</p>
+                </div>
+              `;
+              throw new Error('User cancelled transaction');
+            }
+            
+            // Other errors (unexpected)
             document.getElementById('status').innerHTML = `
               <div class="bg-red-900 bg-opacity-30 border border-red-500 rounded-lg p-4">
-                <p class="text-red-300 font-semibold mb-2"> Phantom Signing Rejected</p>
-                <p class="text-red-200 text-sm mb-2">Error: ${signError.message || 'Unexpected error'}</p>
-                <p class="text-red-200 text-sm mb-2">Code: ${signError.code || 'N/A'}</p>
+                <p class="text-red-300 font-semibold mb-2">❌ Phantom Error</p>
+                <p class="text-red-200 text-sm mb-2">${signError.message || 'Unexpected error'}</p>
                 <div class="mt-3 text-orange-200 text-xs">
-                  <p class="font-semibold mb-1"> Troubleshooting Steps:</p>
+                  <p class="font-semibold mb-1">💡 Quick Fixes:</p>
                   <ol class="list-decimal ml-4 space-y-1">
-                    <li>Check if your Phantom wallet is locked</li>
-                    <li>Try disconnecting and reconnecting Phantom</li>
-                    <li>Update Phantom to the latest version</li>
-                    <li>Check for any Phantom notifications/prompts</li>
-                    <li>Try refreshing the page completely</li>
-                    <li>If issue persists, try a different browser</li>
+                    <li><strong>Unlock Phantom</strong> if it's locked</li>
+                    <li><strong>Approve the transaction</strong> in Phantom popup (check for notification)</li>
+                    <li><strong>Refresh page</strong> and reconnect wallet</li>
+                    <li><strong>Check Phantom version</strong> - update if outdated</li>
                   </ol>
+                  <p class="mt-2 font-semibold">🔍 Error Code: ${signError.code || 'None'}</p>
                 </div>
               </div>
             `;
             
-            throw new Error(`Phantom signing rejected: ${signError.message || 'Unknown error'}`);
+            throw new Error(`Phantom signing failed: ${signError.message || 'Unexpected error'}`);
           }
           
           const serialized = signed.serialize();
           const txBase64 = bs58.encode(serialized);
-          console.log(' Transaction serialized, size:', serialized.length, 'bytes');
+          console.log('✅ Transaction serialized, size:', serialized.length, 'bytes');
 
-          const intentMsg = new TextEncoder().encode(JSON.stringify({ 
-            amount: parseFloat(paymentDetails.maxAmountRequired), 
-            to: paymentDetails.payTo, 
-            nonce: paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`, 
-            resource: paymentDetails.resource || '/rpc' 
-          }));
-          const intentSig = await wallet.signMessage(intentMsg, 'utf8');
+          // Extract transaction signature (first signature in the transaction)
+          // This proves the wallet signed the transaction
+          const txSignature = bs58.encode(signed.signatures[0].signature);
+          console.log('✅ Transaction signature:', txSignature.substring(0, 20) + '...');
+          
+          // Use transaction signature as payment intent proof
+          // This is simpler and more reliable than asking Phantom to sign another message
+          const nonce = paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`;
 
-      return {
-        paymentPayload: {
-              signedIntent: { publicKey: wallet.publicKey.toBase58(), signature: bs58.encode(intentSig.signature) },
+          return {
+            paymentPayload: {
+              signedIntent: { 
+                publicKey: wallet.publicKey.toBase58(), 
+                signature: txSignature  // Use transaction signature as proof
+              },
               txBase64,
               network: paymentDetails.network,
               paymentType: 'SOL'
@@ -866,18 +948,27 @@
             paymentRequirements: { 
               amount: parseFloat(paymentDetails.maxAmountRequired), 
               recipient: paymentDetails.payTo, 
-              nonce: paymentDetails.extra?.nonce || `${Date.now()}-${Math.random()}`
+              nonce,
+              resource: paymentDetails.resource || '/rpc'
             },
           };
         }
       } catch (error) {
-        console.error(' Build failed:', error);
-        throw error;
+        console.error('❌ Build payment failed:', error);
+        console.error('   Error name:', error.name);
+        console.error('   Error message:', error.message);
+        console.error('   Error stack:', error.stack?.split('\n').slice(0, 3).join('\n'));
+        
+        // Re-throw with more context
+        throw new Error(`Payment build failed: ${error.message || error}`);
       }
     }
 
     // Note: PayAI Network backend handles all USDC transfers via the PayAI SDK
     // Frontend only needs to sign payment intent messages
   </script>
+
+  <!-- Real-Time Pricing Widget -->
+  <script src="/shared-pricing-widget.js"></script>
 </body>
 </html>

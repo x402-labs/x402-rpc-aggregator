@@ -76,21 +76,24 @@ export class PayAISdkFacilitator {
       console.log(`   Requirements:`, paymentRequirements);
 
       // Convert our payment payload to x402-solana format
-      // The SDK expects the payment header as a string
-      const paymentHeader = JSON.stringify({
+      // The SDK expects the payment header as BASE64-encoded string
+      const paymentHeaderJson = JSON.stringify({
         paymentPayload,
         paymentRequirements,
       });
-
-      // Mock headers object for SDK
-      const mockHeaders = {
-        'x-payment': paymentHeader,
-      };
+      
+      // CRITICAL: PayAI SDK expects base64-encoded payment header!
+      const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
+      
+      console.log(`   Payment header (JSON):`, paymentHeaderJson.substring(0, 100) + '...');
+      console.log(`   Payment header (base64):`, paymentHeader.substring(0, 50) + '...');
 
       // Create payment requirements in SDK format
+      // NOTE: paymentRequirements.amount is ALREADY in base units (micro-USDC or lamports)
+      // Do NOT multiply by 1e6 again!
       const sdkRequirements = await this.handler.createPaymentRequirements({
         price: {
-          amount: String(Math.floor(paymentRequirements.amount * 1e6)), // Convert to micro-USDC
+          amount: String(Math.floor(paymentRequirements.amount)), // Already in micro-USDC
           asset: {
             address: paymentPayload.tokenMint || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC mainnet
           },
@@ -156,14 +159,16 @@ export class PayAISdkFacilitator {
       }
 
       // Convert to SDK format
-      const paymentHeader = JSON.stringify({
+      // CRITICAL: PayAI SDK expects base64-encoded payment header!
+      const paymentHeaderJson = JSON.stringify({
         paymentPayload,
         paymentRequirements,
       });
+      const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
 
       const sdkRequirements = await this.handler.createPaymentRequirements({
         price: {
-          amount: String(Math.floor(paymentRequirements.amount * 1e6)),
+          amount: String(Math.floor(paymentRequirements.amount)), // Already in micro-USDC
           asset: {
             address: paymentPayload.tokenMint || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
           },

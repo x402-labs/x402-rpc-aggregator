@@ -37,6 +37,7 @@ import { RPCRequest, RPCResponse, AgentPreferences } from './types';
 import { createFacilitatorManager } from './facilitator/facilitator-manager';
 import { createUnifiedX402Middleware } from './middleware/unified-x402-middleware';
 import { proxySolanaRPC } from './routes/solana-proxy';
+import { jupiterOracle } from './pricing/jupiter-oracle';
 import path from 'path';
 
 // Initialize Express app
@@ -112,6 +113,51 @@ app.get('/health', (req: Request, res: Response) => {
       averageLatency: Math.round(stats.averageLatency),
     },
   });
+});
+
+// ========================================
+// REAL-TIME PRICING ORACLE ENDPOINT
+// ========================================
+app.get('/pricing/sol-usd', async (req: Request, res: Response) => {
+  try {
+    const priceData = await jupiterOracle.getSOLPrice();
+    const cached = jupiterOracle.getCachedPrice();
+    
+    // Calculate provider costs at current price
+    const providers = providerRegistry.getProvidersByChain('solana');
+    const dynamicPricing = providers
+      .filter(p => p.costPerCall && p.status === 'active')
+      .map(p => {
+        const lamports = Math.floor((p.costPerCall / priceData.price) * 1e9);
+        return {
+          provider: p.name,
+          usdCost: p.costPerCall,
+          lamports,
+          sol: (lamports / 1e9).toFixed(9),
+        };
+      });
+    
+    res.json({
+      current: {
+        price: priceData.price,
+        source: priceData.source,
+        timestamp: priceData.timestamp,
+      },
+      cached: cached ? {
+        price: cached.price,
+        age: `${Math.floor((Date.now() - cached.timestamp.getTime()) / 1000)}s`,
+      } : null,
+      health: {
+        healthy: jupiterOracle.isHealthy(),
+      },
+      providerCosts: dynamicPricing,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      error: 'Failed to fetch SOL price',
+      details: error.message,
+    });
+  }
 });
 
 // ========================================

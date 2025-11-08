@@ -573,6 +573,10 @@
 
     <!-- Stats Bar -->
     <div class="stats-bar">
+      <div class="stat-card" style="background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.2);">
+        <span class="stat-value" data-sol-price style="color: #fbbf24;">$156</span>
+        <span class="stat-label">SOL Price (Live)</span>
+      </div>
       <div class="stat-card">
         <span class="stat-value" id="total-providers">-</span>
         <span class="stat-label">Total Providers</span>
@@ -775,7 +779,10 @@
           <div class="provider-stats">
             <div class="stat-item">
               <div class="stat-item-label">Cost per Call</div>
-              <div class="stat-item-value cost">$${provider.costPerCall.toFixed(6)}</div>
+              <div class="stat-item-value cost">
+                $${provider.costPerCall.toFixed(6)}
+                ${provider.chains.includes('solana') ? `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;"><span data-provider-lamports="${provider.name}">-</span> lamports</div>` : ''}
+              </div>
             </div>
             <div class="stat-item">
               <div class="stat-item-label">Latency</div>
@@ -863,6 +870,9 @@
     // Refresh every 30 seconds to show updated health status
     setInterval(fetchProviders, 30000);
   </script>
+
+  <!-- Real-Time Pricing Widget -->
+  <script src="/shared-pricing-widget.js"></script>
 </body>
 </html>
 

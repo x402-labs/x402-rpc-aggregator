@@ -727,12 +727,34 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
       </div>
       
       <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; padding-bottom: 0.75rem; border-bottom: 2px solid #334155;">Pricing</h3>
-        <ul style="list-style-type: disc; padding-left: 1.25rem; color: #e2e8f0; line-height: 1.8; font-size: 0.95rem;">
-          <li>$0.0001-$0.0002 per call</li>
-          <li>20% batch discounts</li>
-          <li>Pay-per-use only</li>
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; padding-bottom: 0.75rem; border-bottom: 2px solid #334155;">
+          Real-Time Pricing
+          <span style="background: #10b981; color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; margin-left: 0.5rem;">LIVE</span>
+        </h3>
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; border: 1px solid rgba(16, 185, 129, 0.2);">
+          <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.25rem;">SOL/USD</div>
+          <div data-sol-price style="font-size: 2rem; font-weight: 700; color: #10b981;">$156.51</div>
+          <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+            from <span data-price-source>CoinGecko</span> • updated <span data-price-updated>just now</span>
+          </div>
+        </div>
+        <ul style="list-style-type: none; padding: 0; color: #e2e8f0; line-height: 2; font-size: 0.95rem;">
+          <li style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: #cbd5e1;">Triton</span>
+            <span style="color: #22c55e; font-weight: 600;"><span data-provider-lamports="Triton One">638</span> lamports</span>
+          </li>
+          <li style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: #cbd5e1;">Helius</span>
+            <span style="color: #22c55e; font-weight: 600;"><span data-provider-lamports="Helius">958</span> lamports</span>
+          </li>
+          <li style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+            <span style="color: #cbd5e1;">QuickNode</span>
+            <span style="color: #22c55e; font-weight: 600;"><span data-provider-lamports="QuickNode Solana">1277</span> lamports</span>
+          </li>
         </ul>
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.875rem; color: #94a3b8;">
+          💡 Batch discounts: Save 20% on 1000+ calls
+        </div>
       </div>
     </div>
   </section>
@@ -749,21 +771,25 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
     </div>
     
     <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 3rem;">
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-bottom: 2rem;">
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 2rem; margin-bottom: 2rem;">
         <div style="text-align: center;">
-          <div id="live-total-providers" style="font-size: 3rem; font-weight: 700; color: #6366f1; margin-bottom: 0.5rem;">-</div>
+          <div data-sol-price style="font-size: 2.5rem; font-weight: 700; color: #fbbf24; margin-bottom: 0.5rem;">$156</div>
+          <div style="color: #94a3b8; font-size: 0.875rem;">SOL Price</div>
+        </div>
+        <div style="text-align: center;">
+          <div id="live-total-providers" style="font-size: 2.5rem; font-weight: 700; color: #6366f1; margin-bottom: 0.5rem;">-</div>
           <div style="color: #94a3b8; font-size: 0.875rem;">Total Providers</div>
         </div>
         <div style="text-align: center;">
-          <div id="live-active-providers" style="font-size: 3rem; font-weight: 700; color: #10b981; margin-bottom: 0.5rem;">-</div>
-          <div style="color: #94a3b8; font-size: 0.875rem;">Active Providers</div>
+          <div id="live-active-providers" style="font-size: 2.5rem; font-weight: 700; color: #10b981; margin-bottom: 0.5rem;">-</div>
+          <div style="color: #94a3b8; font-size: 0.875rem;">Active</div>
         </div>
         <div style="text-align: center;">
-          <div id="live-avg-latency" style="font-size: 3rem; font-weight: 700; color: #60a5fa; margin-bottom: 0.5rem;">-</div>
-          <div style="color: #94a3b8; font-size: 0.875rem;">Avg Latency (ms)</div>
+          <div id="live-avg-latency" style="font-size: 2.5rem; font-weight: 700; color: #60a5fa; margin-bottom: 0.5rem;">-</div>
+          <div style="color: #94a3b8; font-size: 0.875rem;">Latency (ms)</div>
         </div>
         <div style="text-align: center;">
-          <div id="live-lowest-cost" style="font-size: 3rem; font-weight: 700; color: #22c55e; margin-bottom: 0.5rem;">-</div>
+          <div id="live-lowest-cost" style="font-size: 2.5rem; font-weight: 700; color: #22c55e; margin-bottom: 0.5rem;">-</div>
           <div style="color: #94a3b8; font-size: 0.875rem;">Lowest Cost</div>
         </div>
       </div>
@@ -927,6 +953,9 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
       <p>© 2025 x402-RPC-Aggregator. Built for autonomous AI agents and the decentralized web.</p>
     </div>
   </footer>
+
+  <!-- Real-Time Pricing Widget -->
+  <script src="/shared-pricing-widget.js"></script>
 
   <!-- Live Stats JavaScript -->
   <script>
