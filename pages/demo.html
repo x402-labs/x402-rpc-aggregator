@@ -1017,11 +1017,35 @@
           
           console.log('   Fee payer (PayAI facilitator):', facilitatorFeePayer);
           console.log('   User wallet:', wallet.publicKey.toBase58());
+          console.log('   Transaction info before signing:');
+          console.log('     - Instructions:', tx.instructions.length);
+          console.log('     - Fee payer:', tx.feePayer.toBase58());
+          console.log('     - Blockhash:', tx.recentBlockhash.substring(0, 8) + '...');
           console.log('   Requesting signature from Phantom...');
           
-          // Sign with user's wallet
+          // Sign with user's wallet (partial signature)
           const signed = await wallet.signTransaction(tx);
           console.log('✅ Transaction signed by user');
+          
+          // Verify signature was actually added
+          if (!signed.signatures || signed.signatures.length === 0) {
+            throw new Error('Transaction signing failed: no signatures in transaction');
+          }
+          
+          // Find user's signature
+          const userSig = signed.signatures.find(sig => 
+            sig.publicKey && sig.publicKey.equals(wallet.publicKey)
+          );
+          
+          if (!userSig || !userSig.signature) {
+            throw new Error('User signature missing from transaction');
+          }
+          
+          console.log('✅ User signature verified:', {
+            publicKey: userSig.publicKey.toBase58(),
+            signatureLength: userSig.signature.length,
+            signaturePreview: bs58.encode(userSig.signature).substring(0, 20) + '...'
+          });
           
           // Serialize partially signed transaction
           // Allow missing facilitator signature; PayAI will add it during settlement

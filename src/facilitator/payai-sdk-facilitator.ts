@@ -80,7 +80,7 @@ export class PayAISdkFacilitator {
       const { Transaction } = require('@solana/web3.js');
       
       // Extract transaction to get payer info
-      // CRITICAL: Transaction is now BASE64 encoded (not base58)
+
       let payerPublicKey;
       try {
         if (paymentPayload.payload?.transaction) {
@@ -93,39 +93,46 @@ export class PayAISdkFacilitator {
         console.warn(`   Could not extract payer from transaction:`, err.message);
       }
 
-      // Parse amount from paymentRequirements
-      // Client sends either 'amount' or 'maxAmountRequired' depending on format
-      const amountStr = paymentRequirements.maxAmountRequired || String(paymentRequirements.amount);
-      const amount = parseInt(amountStr, 10);
-      if (isNaN(amount)) {
-        console.error(`   Invalid amount in paymentRequirements:`, paymentRequirements);
-        return {
-          valid: false,
-          error: 'Invalid payment amount',
-        };
-      }
-
-      // Create SDK requirements matching the working PayAI example exactly
-      // Use client's paymentRequirements directly (already in correct format)
-      const sdkRequirements = {
-        scheme: paymentRequirements.scheme || 'exact' as const,
+      // CRITICAL: Normalize requirements for PayAI facilitator
+      const sdkRequirements: any = {
+        scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
-        maxAmountRequired: String(amount),
-        asset: paymentRequirements.asset || {
-          address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-        },
         payTo: paymentRequirements.payTo || this.treasuryAddress,
         resource: paymentRequirements.resource || '',
         description: paymentRequirements.description || 'Payment via x402',
-        extra: paymentRequirements.extra || {
-          feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4'
-        }
+        mimeType: paymentRequirements.mimeType || 'application/json',
+        maxTimeoutSeconds: paymentRequirements.maxTimeoutSeconds || 300,
+        extra: paymentRequirements.extra || {},
+        // CRITICAL: Normalize asset to OBJECT (facilitator expects { address: string })
+        asset: {
+          address: typeof paymentRequirements.asset === 'object' 
+            ? paymentRequirements.asset.address 
+            : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+        },
       };
+
+      // CRITICAL: Handle amount field based on scheme and what client sent
+      if ('maxAmountRequired' in paymentRequirements) {
+        sdkRequirements.maxAmountRequired = String(paymentRequirements.maxAmountRequired);
+      } else if ('amount' in paymentRequirements) {
+        // Alias 'amount' to 'maxAmountRequired' for compatibility
+        sdkRequirements.maxAmountRequired = String(paymentRequirements.amount);
+      } else {
+        console.error(`   Missing maxAmountRequired or amount in requirements:`, paymentRequirements);
+        return {
+          valid: false,
+          error: 'Missing maxAmountRequired or amount in payment requirements',
+        };
+      }
+      
+      // Add outputSchema if present
+      if (paymentRequirements.outputSchema) {
+        sdkRequirements.outputSchema = paymentRequirements.outputSchema;
+      }
 
       console.log(`🌐 Calling PayAI x402-solana SDK verifyPayment()...`);
       console.log(`   SDK: x402-solana (https://github.com/PayAINetwork/x402-solana)`);
       
-      // CRITICAL: PayAI x402-solana SDK expects base64-encoded payment header
       // Per https://github.com/PayAINetwork/x402-solana#server
       // verifyPayment(header: string, requirements: PaymentRequirements)
       const paymentHeaderJson = JSON.stringify(paymentPayload);
@@ -208,25 +215,34 @@ export class PayAISdkFacilitator {
         };
       }
 
-      // Parse amount from paymentRequirements (same as verify)
-      const amountStr = paymentRequirements.maxAmountRequired || String(paymentRequirements.amount);
-      const amount = parseInt(amountStr, 10);
-
-      // Create SDK requirements matching verify method
-      const sdkRequirements = {
-        scheme: paymentRequirements.scheme || 'exact' as const,
+      // CRITICAL: Use same normalization as verify
+      const sdkRequirements: any = {
+        scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
-        maxAmountRequired: String(amount),
-        asset: paymentRequirements.asset || {
-          address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-        },
         payTo: paymentRequirements.payTo || this.treasuryAddress,
         resource: paymentRequirements.resource || '',
         description: paymentRequirements.description || 'Payment via x402',
-        extra: paymentRequirements.extra || {
-          feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4'
-        }
+        mimeType: paymentRequirements.mimeType || 'application/json',
+        maxTimeoutSeconds: paymentRequirements.maxTimeoutSeconds || 300,
+        extra: paymentRequirements.extra || {},
+        // Normalize asset to OBJECT
+        asset: {
+          address: typeof paymentRequirements.asset === 'object' 
+            ? paymentRequirements.asset.address 
+            : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+        },
       };
+
+      // Handle amount field
+      if ('maxAmountRequired' in paymentRequirements) {
+        sdkRequirements.maxAmountRequired = String(paymentRequirements.maxAmountRequired);
+      } else if ('amount' in paymentRequirements) {
+        sdkRequirements.maxAmountRequired = String(paymentRequirements.amount);
+      }
+      
+      if (paymentRequirements.outputSchema) {
+        sdkRequirements.outputSchema = paymentRequirements.outputSchema;
+      }
 
       // CRITICAL: PayAI SDK expects base64-encoded payment header string (same as verify)
       const paymentHeaderJson = JSON.stringify(paymentPayload);
