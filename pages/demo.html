@@ -405,6 +405,10 @@
           <select id="method" class="w-full p-2 bg-gray-700 rounded mb-3">
             <option value="getSlot">getSlot (Solana) - no params needed</option>
             <option value="getBalance">getBalance (Solana) - needs address</option>
+            <option value="getAccountInfo">getAccountInfo (Solana) - get account data</option>
+            <option value="getTransaction">getTransaction (Solana) - get tx by signature</option>
+            <option value="getTokenAccountsByOwner">getTokenAccountsByOwner (Solana) - SPL tokens</option>
+            <option value="getSignaturesForAddress">getSignaturesForAddress (Solana) - tx history</option>
             <option value="sendTransaction">sendTransaction (Solana) - broadcast tx</option>
             <option value="eth_blockNumber">eth_blockNumber (Base)</option>
           </select>
@@ -496,7 +500,17 @@
         paramsInput.placeholder = 'Click "Build Sample Transaction" first, or paste base58 tx';
       } else {
         buildBtn.style.display = 'none';
-        paramsInput.placeholder = 'Empty for getSlot, or paste address for getBalance';
+        // Set helpful placeholders based on method
+        const placeholders = {
+          'getSlot': 'No params needed - leave empty',
+          'getBalance': 'Paste a Solana address (e.g., EPjFWdd5AufqSSqeM2...)',
+          'getAccountInfo': 'Paste a Solana address to inspect',
+          'getTransaction': 'Paste a transaction signature (base58)',
+          'getTokenAccountsByOwner': '["<wallet-address>", {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}]',
+          'getSignaturesForAddress': 'Paste a wallet address for tx history',
+          'eth_blockNumber': 'No params needed - leave empty',
+        };
+        paramsInput.placeholder = placeholders[e.target.value] || 'Enter params as JSON array';
       }
     });
 
