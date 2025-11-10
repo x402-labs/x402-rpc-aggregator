@@ -239,7 +239,7 @@
           <button id="start" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg font-bold text-lg">
             Start Autonomous Agent
           </button>
-          <p class="mt-4 text-sm text-gray-400">Agent will run 10 RPC calls via Triton, including <strong class="text-purple-300">sendTransaction</strong>, and pay automatically with SOL via X-Labs</p>
+          <p class="mt-4 text-sm text-gray-400">Agent will run 10 RPC calls via Triton, including <strong class="text-purple-300">sendTransaction</strong>, and pay automatically with SOL via X402Labs</p>
         </div>
 
         <div class="bg-gray-800 p-6 rounded-xl">
@@ -345,7 +345,7 @@
               method: task.method,
               params: task.params,
               chain: task.chain,
-              facilitator: 'xlab' // Use X-Labs for agent autonomy
+              facilitator: 'x402labs' // Use x402labs self-hosted facilitator
             }),
           });
 
@@ -388,7 +388,7 @@
                 method: task.method,
                 params: task.params,
                 chain: task.chain,
-                facilitator: 'xlab'
+                facilitator: 'x402labs'
               }),
             });
 

@@ -71,89 +71,112 @@ export class PayAISdkFacilitator {
     paymentRequirements: any
   ): Promise<VerifyResult> {
     try {
-      console.log(`🔍 PayAI: Starting LOCAL verification (not using PayAI Network)`);
+      console.log(`🔍 PayAI Network: Starting verification via facilitator service`);
       console.log(`   Payment payload:`, Object.keys(paymentPayload));
       console.log(`   Requirements:`, paymentRequirements);
 
-      // Verify signature locally using nacl instead of calling PayAI Network
-      // This is because we sign a different message format than what PayAI SDK expects
-      const nacl = require('tweetnacl');
+      // Use PayAI Network facilitator service for verification
       const bs58 = require('bs58');
-
-      const { signedIntent } = paymentPayload;
-      if (!signedIntent?.publicKey || !signedIntent?.signature) {
-        return {
-          valid: false,
-          error: 'Missing signedIntent publicKey or signature'
-        };
-      }
-
-      // Ensure signature is a string (might be Buffer from JSON parsing)
-      if (Buffer.isBuffer(signedIntent.signature)) {
-        console.log(`⚠️  Signature is Buffer, converting to base58...`);
-        signedIntent.signature = bs58.encode(signedIntent.signature);
-      } else if (signedIntent.signature instanceof Uint8Array) {
-        console.log(`⚠️  Signature is Uint8Array, converting to base58...`);
-        signedIntent.signature = bs58.encode(signedIntent.signature);
-      } else if (typeof signedIntent.signature !== 'string') {
-        console.log(`⚠️  Signature is ${typeof signedIntent.signature}, converting to string...`);
-        signedIntent.signature = String(signedIntent.signature);
-      }
-      console.log(`   Signature type: ${typeof signedIntent.signature}, length: ${signedIntent.signature.length}`);
-
-      // Step 1: Reconstruct the message that was signed
-      // Client signed: {amount, to, nonce, resource}
-      const intentMessage = JSON.stringify({
-        amount: paymentRequirements.amount,
-        to: paymentRequirements.recipient,
-        nonce: paymentRequirements.nonce,
-        resource: paymentRequirements.resource
-      });
+      const { Transaction } = require('@solana/web3.js');
       
-      console.log(`🔐 Verifying signature locally...`);
-      console.log(`   Message that was signed:`, intentMessage);
+      // Extract transaction to get payer info
+      // CRITICAL: Transaction is now BASE64 encoded (not base58)
+      let payerPublicKey;
+      try {
+        if (paymentPayload.payload?.transaction) {
+          const txBytes = Buffer.from(paymentPayload.payload.transaction, 'base64');
+          const tx = Transaction.from(txBytes);
+          payerPublicKey = tx.feePayer?.toBase58();
+          console.log(`   Extracted payer from transaction: ${payerPublicKey}`);
+        }
+      } catch (err: any) {
+        console.warn(`   Could not extract payer from transaction:`, err.message);
+      }
 
-      // Step 2: Convert to bytes for verification
-      const messageBytes = new TextEncoder().encode(intentMessage);
-      const signatureBytes = bs58.decode(signedIntent.signature);
-      const publicKeyBytes = bs58.decode(signedIntent.publicKey);
-
-      console.log(`   Message bytes length: ${messageBytes.length}`);
-      console.log(`   Signature bytes length: ${signatureBytes.length}`);
-      console.log(`   PublicKey bytes length: ${publicKeyBytes.length}`);
-
-      // Step 3: Verify ed25519 signature
-      const isValidSignature = nacl.sign.detached.verify(
-        messageBytes,
-        signatureBytes,
-        publicKeyBytes
-      );
-
-      console.log(`   Signature verification result: ${isValidSignature}`);
-
-      if (!isValidSignature) {
-        console.error(`❌ Signature verification failed!`);
-        console.error(`   Expected message: ${intentMessage}`);
-        console.error(`   Signature: ${signedIntent.signature.substring(0, 50)}...`);
-        console.error(`   PublicKey: ${signedIntent.publicKey}`);
+      // Parse amount from paymentRequirements
+      // Client sends either 'amount' or 'maxAmountRequired' depending on format
+      const amountStr = paymentRequirements.maxAmountRequired || String(paymentRequirements.amount);
+      const amount = parseInt(amountStr, 10);
+      if (isNaN(amount)) {
+        console.error(`   Invalid amount in paymentRequirements:`, paymentRequirements);
         return {
           valid: false,
-          error: 'Invalid payment intent signature',
+          error: 'Invalid payment amount',
         };
       }
 
-      console.log(`✅ Signature is valid!`);
+      // Create SDK requirements matching the working PayAI example exactly
+      // Use client's paymentRequirements directly (already in correct format)
+      const sdkRequirements = {
+        scheme: paymentRequirements.scheme || 'exact' as const,
+        network: paymentRequirements.network || this.network,
+        maxAmountRequired: String(amount),
+        asset: paymentRequirements.asset || {
+          address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+        },
+        payTo: paymentRequirements.payTo || this.treasuryAddress,
+        resource: paymentRequirements.resource || '',
+        description: paymentRequirements.description || 'Payment via x402',
+        extra: paymentRequirements.extra || {
+          feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4'
+        }
+      };
 
-      // Extract payer from payment payload
-      const payer = signedIntent.publicKey;
+      console.log(`🌐 Calling PayAI x402-solana SDK verifyPayment()...`);
+      console.log(`   SDK: x402-solana (https://github.com/PayAINetwork/x402-solana)`);
+      
+      // CRITICAL: PayAI x402-solana SDK expects base64-encoded payment header
+      // Per https://github.com/PayAINetwork/x402-solana#server
+      // verifyPayment(header: string, requirements: PaymentRequirements)
+      const paymentHeaderJson = JSON.stringify(paymentPayload);
+      const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
+      
+      console.log(`   Payment Header (base64, first 100 chars):`, paymentHeader.substring(0, 100) + '...');
+      console.log(`   SDK Requirements:`, JSON.stringify(sdkRequirements, null, 2).substring(0, 400));
+      
+      // Use PayAI x402-solana SDK's verifyPayment method
+      // The SDK internally calls https://facilitator.payai.network/verify
+      console.log(`📤 Calling this.handler.verifyPayment()...`);
+      console.log(`   Handler type:`, typeof this.handler);
+      console.log(`   Handler.verifyPayment type:`, typeof this.handler.verifyPayment);
+      
+      let result;
+      try {
+        result = await this.handler.verifyPayment(paymentHeader, sdkRequirements);
+        console.log(`   PayAI SDK result type:`, typeof result);
+        console.log(`   PayAI SDK result:`, JSON.stringify(result, null, 2));
+      } catch (sdkError: any) {
+        console.error(`   ❌ SDK verifyPayment threw error:`, sdkError);
+        console.error(`   Error message:`, sdkError.message);
+        console.error(`   Error stack:`, sdkError.stack);
+        return {
+          valid: false,
+          error: `SDK error: ${sdkError.message}`,
+        };
+      }
+
+      if (!result || !result.isValid) {
+        console.error(`❌ PayAI Network rejected verification`);
+        console.error(`   Result:`, result);
+        console.error(`   Invalid reason:`, result?.invalidReason);
+        console.error(`   Treasury we sent:`, this.treasuryAddress);
+        console.error(`   PaymentPayload keys:`, Object.keys(paymentPayload));
+        
+        return {
+          valid: false,
+          error: result?.invalidReason || 'Payment verification failed via PayAI Network',
+        };
+      }
+
+      console.log(`✅ PayAI Network verification successful!`);
 
       return {
         valid: true,
-        buyerPubkey: payer,
-        payer,
+        buyerPubkey: payerPublicKey || 'unknown',
+        payer: payerPublicKey || 'unknown',
       };
     } catch (error: any) {
-      console.error('❌ PayAI SDK verification error:', error.message);
+      console.error('❌ PayAI Network verification error:', error.message);
       return {
         valid: false,
         error: error.message || 'Unknown verification error',
@@ -174,7 +197,7 @@ export class PayAISdkFacilitator {
     paymentRequirements: any
   ): Promise<SettleResult> {
     try {
-      console.log(`💰 PayAI SDK: Starting settlement`);
+      console.log(`💰 PayAI Network: Starting settlement via facilitator service`);
 
       // First verify
       const verifyResult = await this.verifyPayment(paymentPayload, paymentRequirements);
@@ -185,35 +208,42 @@ export class PayAISdkFacilitator {
         };
       }
 
-      // Convert to SDK format
-      // CRITICAL: PayAI SDK expects base64-encoded payment header!
-      const paymentHeaderJson = JSON.stringify({
-        paymentPayload,
-        paymentRequirements,
-      });
+      // Parse amount from paymentRequirements (same as verify)
+      const amountStr = paymentRequirements.maxAmountRequired || String(paymentRequirements.amount);
+      const amount = parseInt(amountStr, 10);
+
+      // Create SDK requirements matching verify method
+      const sdkRequirements = {
+        scheme: paymentRequirements.scheme || 'exact' as const,
+        network: paymentRequirements.network || this.network,
+        maxAmountRequired: String(amount),
+        asset: paymentRequirements.asset || {
+          address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+        },
+        payTo: paymentRequirements.payTo || this.treasuryAddress,
+        resource: paymentRequirements.resource || '',
+        description: paymentRequirements.description || 'Payment via x402',
+        extra: paymentRequirements.extra || {
+          feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4'
+        }
+      };
+
+      // CRITICAL: PayAI SDK expects base64-encoded payment header string (same as verify)
+      const paymentHeaderJson = JSON.stringify(paymentPayload);
       const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
 
-      const sdkRequirements = await this.handler.createPaymentRequirements({
-        price: {
-          amount: String(Math.floor(paymentRequirements.amount)), // Already in micro-USDC
-          asset: {
-            address: paymentPayload.tokenMint || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          },
-        },
-        network: this.network,
-        config: {
-          description: paymentRequirements.resource || 'RPC Access',
-          resource: paymentRequirements.resource || '/rpc',
-        },
-      });
+      console.log(`🌐 Calling PayAI SDK settlePayment method...`);
+      console.log(`   Payment Header (base64):`, paymentHeader.substring(0, 100) + '...');
+      console.log(`   SDK Requirements:`, JSON.stringify(sdkRequirements, null, 2).substring(0, 400));
 
-      // Settle payment using SDK
+      // Use PayAI SDK's settlePayment method
       const result = await this.handler.settlePayment(paymentHeader, sdkRequirements);
 
-      console.log(`   Settlement result:`, result);
+      console.log(`   PayAI Network settlement result:`, result);
 
-      // The SDK returns a transaction signature on success
-      if (result && typeof result === 'object' && 'transaction' in result) {
+      // PayAI SDK returns SettleResponse: { success, transaction, errorReason }
+      if (result && result.success && result.transaction) {
+        console.log(`✅ Payment settled by PayAI Network: ${result.transaction}`);
         return {
           settled: true,
           txHash: result.transaction,
@@ -221,20 +251,12 @@ export class PayAISdkFacilitator {
         };
       }
 
-      // If result is just true/false
-      if (result === true) {
-        return {
-          settled: true,
-          txHash: 'settled', // SDK may not return signature in all cases
-        };
-      }
-
       return {
         settled: false,
-        error: 'Settlement failed',
+        error: result?.errorReason || 'Settlement failed via PayAI Network',
       };
     } catch (error: any) {
-      console.error('❌ PayAI SDK settlement error:', error.message);
+      console.error('❌ PayAI Network settlement error:', error.message);
       return {
         settled: false,
         error: error.message || 'Unknown settlement error',

@@ -1,8 +1,8 @@
 /**
- * Unified x402 Middleware - Works with X-Labs or PayAI facilitators
+ * Unified x402 Middleware - Works with x402labs or PayAI facilitators
  * 
  * Supports:
- * - X-Labs Solana facilitator
+ * - x402labs Solana facilitator
  * - PayAI Network facilitator
  * - Automatic fallback between them
  * - Batch payment management
@@ -240,20 +240,20 @@ async function createX402Response(
   let effectiveFacilitator = facilitatorInfo.primary.type || 'payai';
   
   // If client specifies a facilitator preference, use that for asset selection
-  if (clientFacilitator === 'xlab' || clientFacilitator === 'payai') {
+  if (clientFacilitator === 'x402labs' || clientFacilitator === 'payai') {
     effectiveFacilitator = clientFacilitator;
   }
   
   // Determine network and asset based on chain AND facilitator type
   // Use x402scan-compliant network names (no -mainnet suffix for primary networks)
   // IMPORTANT: costPerCall is in USD, so we prefer USDC (1:1 with USD) for accurate pricing
-  // But X-Labs facilitator uses SOL, so we match the facilitator's payment token
+  // But x402labs facilitator uses SOL, so we match the facilitator's payment token
   const getChainInfo = (chain: string, facilitatorType: string) => {
     switch (chain) {
       case 'solana':
         // PayAI uses USDC (1:1 with USD - accurate pricing)
-        // X-Labs uses SOL (volatile, but that's the facilitator's choice)
-        const asset = facilitatorType === 'xlab' ? 'SOL' : 'USDC';
+        // x402labs uses SOL (volatile, but that's the facilitator's choice)
+        const asset = facilitatorType === 'x402labs' ? 'SOL' : 'USDC';
         return { network: 'solana', asset };
       case 'ethereum':
         return { network: 'ethereum', asset: 'ETH' };
@@ -298,15 +298,25 @@ async function createX402Response(
   const getAmountInBaseUnit = async (usdAmount: number, asset: string): Promise<string> => {
     switch (asset) {
       case 'SOL': {
-        // For X-Labs facilitator: Convert USD to SOL using REAL-TIME price from Jupiter
+        // For x402labs facilitator: Convert USD to SOL using REAL-TIME price from Jupiter
         const priceData = await jupiterOracle.getSOLPrice();
         const SOL_USD_PRICE = priceData.price;
         const solAmount = usdAmount / SOL_USD_PRICE;
         const lamports = Math.floor(solAmount * 1e9);
         
-        console.log(`💰 Dynamic pricing: $${usdAmount} USD → ${lamports} lamports (SOL @ $${SOL_USD_PRICE.toFixed(2)} from ${priceData.source})`);
+        // CRITICAL: Ensure payment covers rent-exemption minimum (890,880 lamports)
+        // If the calculated amount is too low, use rent-exempt minimum
+        const RENT_EXEMPT_MINIMUM = 890880; // Solana rent-exempt minimum for empty account
+        const finalLamports = Math.max(lamports, RENT_EXEMPT_MINIMUM);
         
-        return lamports.toString();
+        if (finalLamports > lamports) {
+          console.log(`💰 x402labs pricing: $${usdAmount} USD → ${lamports} lamports (too low for rent)`);
+          console.log(`   ⬆️  Adjusted to rent-exempt minimum: ${finalLamports} lamports (SOL @ $${SOL_USD_PRICE.toFixed(2)} from ${priceData.source})`);
+        } else {
+          console.log(`💰 x402labs pricing: $${usdAmount} USD → ${finalLamports} lamports (SOL @ $${SOL_USD_PRICE.toFixed(2)} from ${priceData.source})`);
+        }
+        
+        return finalLamports.toString();
       }
       case 'ETH': {
         // For Ethereum: Convert USD to ETH first
@@ -402,6 +412,12 @@ async function createX402Response(
         type: facilitatorInfo.primary.type,
         fallback: facilitatorInfo.fallback?.name,
       },
+      // Include PayAI facilitator feePayer address (required for transaction building)
+      // Per PayAI transaction builder: https://github.com/PayAINetwork/x402-solana/blob/main/src/client/transaction-builder.ts
+      // The transaction must have facilitator as feePayer before user signs
+      ...(effectiveFacilitator === 'payai' && {
+        feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4',
+      }),
       // Include batch option if available
       ...(provider.batchCost && {
         batchOption: {

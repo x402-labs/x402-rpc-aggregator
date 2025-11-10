@@ -8,7 +8,7 @@ import { SolanaFacilitator } from './solana-facilitator';
 import { PayAISdkFacilitator } from './payai-sdk-facilitator';
 import axios from 'axios';
 
-export type FacilitatorType = 'xlab' | 'payai' | 'auto';
+export type FacilitatorType = 'x402labs' | 'payai' | 'auto';
 
 export interface FacilitatorConfig {
   type: FacilitatorType;
@@ -20,7 +20,7 @@ export interface FacilitatorConfig {
   payaiFacilitatorUrl?: string;
   // Fallback options
   enableFallback?: boolean;
-  fallbackType?: 'xlab' | 'payai';
+  fallbackType?: 'x402labs' | 'payai';
 }
 
 export interface VerifyResult {
@@ -52,11 +52,11 @@ export interface IFacilitator {
 }
 
 /**
- * X-Labs Facilitator Wrapper
+ * x402labs Self-Hosted Facilitator
  */
 export class SelfHostedFacilitator implements IFacilitator {
-  name = 'X-Labs solana network';
-  type: FacilitatorType = 'xlab';
+  name = 'x402labs';
+  type: FacilitatorType = 'x402labs';
   private facilitator: SolanaFacilitator | null = null;
 
   constructor(config: FacilitatorConfig) {
@@ -66,9 +66,9 @@ export class SelfHostedFacilitator implements IFacilitator {
           solanaPrivateKey: config.solanaPrivateKey,
           networks: config.networks,
         });
-        console.log('✅ X-Labs Facilitator initialized');
+        console.log('✅ x402labs Facilitator initialized');
       } catch (err: any) {
-        console.error('❌ X-Labs Facilitator init failed:', err.message);
+        console.error('❌ x402labs Facilitator init failed:', err.message);
       }
     }
   }
@@ -79,7 +79,7 @@ export class SelfHostedFacilitator implements IFacilitator {
 
   async verifyPayment(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
     if (!this.facilitator) {
-      return { valid: false, error: 'X-Labs facilitator not available' };
+      return { valid: false, error: 'x402labs facilitator not available' };
     }
 
     try {
@@ -102,7 +102,7 @@ export class SelfHostedFacilitator implements IFacilitator {
 
   async settlePayment(paymentPayload: any, paymentRequirements: any): Promise<SettleResult> {
     if (!this.facilitator) {
-      return { settled: false, error: 'X-Labs facilitator not available' };
+      return { settled: false, error: 'x402labs facilitator not available' };
     }
 
     try {
@@ -255,21 +255,21 @@ export class FacilitatorManager {
     const { type, enableFallback, fallbackType } = this.config;
 
     // Initialize primary facilitator
-    if (type === 'xlab') {
+    if (type === 'x402labs') {
       this.primaryFacilitator = new SelfHostedFacilitator(this.config);
       if (enableFallback && fallbackType === 'payai') {
         this.fallbackFacilitator = new PayAIFacilitator(this.config);
       }
     } else if (type === 'payai') {
       this.primaryFacilitator = new PayAIFacilitator(this.config);
-      if (enableFallback && fallbackType === 'xlab') {
+      if (enableFallback && fallbackType === 'x402labs') {
         this.fallbackFacilitator = new SelfHostedFacilitator(this.config);
       }
     } else if (type === 'auto') {
-      // Auto: Try X-Labs first, fallback to PayAI
-      const xlabFacilitator = new SelfHostedFacilitator(this.config);
-      if (xlabFacilitator.isAvailable()) {
-        this.primaryFacilitator = xlabFacilitator;
+      // Auto: Try x402labs first, fallback to PayAI
+      const x402labsFacilitator = new SelfHostedFacilitator(this.config);
+      if (x402labsFacilitator.isAvailable()) {
+        this.primaryFacilitator = x402labsFacilitator;
         this.fallbackFacilitator = new PayAIFacilitator(this.config);
       } else {
         this.primaryFacilitator = new PayAIFacilitator(this.config);
@@ -305,24 +305,43 @@ export class FacilitatorManager {
   async verifyPayment(
     paymentPayload: any, 
     paymentRequirements: any, 
-    forceFacilitator?: 'xlab' | 'payai'
+    forceFacilitator?: 'x402labs' | 'payai'
   ): Promise<VerifyResult & { facilitator: string }> {
     // If client forces a specific facilitator, try to honor it
-    if (forceFacilitator === 'xlab') {
-      if (this.primaryFacilitator?.type === 'xlab' && this.primaryFacilitator.isAvailable()) {
-        console.log('🎯 Using client-requested X-Labs facilitator');
+    if (forceFacilitator === 'x402labs') {
+      if (this.primaryFacilitator?.type === 'x402labs' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested x402labs facilitator');
         const result = await this.primaryFacilitator.verifyPayment(paymentPayload, paymentRequirements);
         return { ...result, facilitator: this.primaryFacilitator.name };
-      } else if (this.fallbackFacilitator?.type === 'xlab' && this.fallbackFacilitator.isAvailable()) {
-        console.log('🎯 Using fallback X-Labs facilitator');
+      } else if (this.fallbackFacilitator?.type === 'x402labs' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using fallback x402labs facilitator');
         const result = await this.fallbackFacilitator.verifyPayment(paymentPayload, paymentRequirements);
         return { ...result, facilitator: this.fallbackFacilitator.name };
       } else {
         return { 
           valid: false, 
           isValid: false,
-          error: 'X-Labs facilitator not available - missing SOLANA_PRIVATE_KEY',
-          facilitator: 'xlab (unavailable)' 
+          error: 'x402labs facilitator not available - missing SOLANA_PRIVATE_KEY',
+          facilitator: 'x402labs (unavailable)' 
+        };
+      }
+    }
+    
+    if (forceFacilitator === 'payai') {
+      if (this.primaryFacilitator?.type === 'payai' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested PayAI Network facilitator');
+        const result = await this.primaryFacilitator.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.primaryFacilitator.name };
+      } else if (this.fallbackFacilitator?.type === 'payai' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested PayAI Network facilitator (from fallback)');
+        const result = await this.fallbackFacilitator.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.fallbackFacilitator.name };
+      } else {
+        return { 
+          valid: false, 
+          isValid: false,
+          error: 'PayAI Network facilitator not available',
+          facilitator: 'payai (unavailable)' 
         };
       }
     }
@@ -357,24 +376,43 @@ export class FacilitatorManager {
   async settlePayment(
     paymentPayload: any, 
     paymentRequirements: any,
-    forceFacilitator?: 'xlab' | 'payai'
+    forceFacilitator?: 'x402labs' | 'payai'
   ): Promise<SettleResult & { facilitator: string }> {
     // If client forces a specific facilitator, try to honor it
-    if (forceFacilitator === 'xlab') {
-      if (this.primaryFacilitator?.type === 'xlab' && this.primaryFacilitator.isAvailable()) {
-        console.log('🎯 Using client-requested X-Labs facilitator');
+    if (forceFacilitator === 'x402labs') {
+      if (this.primaryFacilitator?.type === 'x402labs' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested x402labs facilitator');
         const result = await this.primaryFacilitator.settlePayment(paymentPayload, paymentRequirements);
         return { ...result, facilitator: this.primaryFacilitator.name };
-      } else if (this.fallbackFacilitator?.type === 'xlab' && this.fallbackFacilitator.isAvailable()) {
-        console.log('🎯 Using fallback X-Labs facilitator');
+      } else if (this.fallbackFacilitator?.type === 'x402labs' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using fallback x402labs facilitator');
         const result = await this.fallbackFacilitator.settlePayment(paymentPayload, paymentRequirements);
         return { ...result, facilitator: this.fallbackFacilitator.name };
       } else {
         return { 
           settled: false,
           success: false,
-          error: 'X-Labs facilitator not available - missing SOLANA_PRIVATE_KEY',
-          facilitator: 'xlab (unavailable)' 
+          error: 'x402labs facilitator not available - missing SOLANA_PRIVATE_KEY',
+          facilitator: 'x402labs (unavailable)' 
+        };
+      }
+    }
+    
+    if (forceFacilitator === 'payai') {
+      if (this.primaryFacilitator?.type === 'payai' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested PayAI Network facilitator');
+        const result = await this.primaryFacilitator.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.primaryFacilitator.name };
+      } else if (this.fallbackFacilitator?.type === 'payai' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested PayAI Network facilitator (from fallback)');
+        const result = await this.fallbackFacilitator.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.fallbackFacilitator.name };
+      } else {
+        return { 
+          settled: false,
+          success: false,
+          error: 'PayAI Network facilitator not available',
+          facilitator: 'payai (unavailable)' 
         };
       }
     }
@@ -463,7 +501,7 @@ export function createFacilitatorManager(): FacilitatorManager {
     
     // Fallback config
     enableFallback: process.env.X402_ENABLE_FALLBACK !== 'false',
-    fallbackType: (process.env.X402_FALLBACK_TYPE as 'xlab' | 'payai') || 'payai',
+    fallbackType: (process.env.X402_FALLBACK_TYPE as 'x402labs' | 'payai') || 'payai',
   };
 
   return new FacilitatorManager(config);

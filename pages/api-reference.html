@@ -553,7 +553,7 @@ console.log('Tx Hash:', result.x402.paymentInfo.txHash);</code></pre>
               <tr>
                 <td><span class="parameter-name">facilitator</span><span class="optional">optional</span></td>
                 <td>string</td>
-                <td>Payment facilitator: "xlab" (X-Labs SOL) or "payai" (PayAI USDC). <strong>Important for SOL payments!</strong></td>
+                <td>Payment facilitator: "x402labs" (SOL) or "payai" (USDC). <strong>Important for SOL payments!</strong></td>
               </tr>
             </tbody>
           </table>
@@ -620,9 +620,9 @@ Value: JSON string
 }</code></pre>
         </div>
 
-        <h3>X-Labs Facilitator (SOL Payments)</h3>
+        <h3>x402labs Facilitator (SOL Payments)</h3>
         <div class="endpoint-card">
-          <p style="color: #cbd5e1; margin-bottom: 1rem;">For X-Labs facilitator, include signed transaction:</p>
+          <p style="color: #cbd5e1; margin-bottom: 1rem;">For x402labs facilitator, include signed transaction:</p>
 <pre><code>{
   "paymentPayload": {
     "signedIntent": {
@@ -653,22 +653,29 @@ Value: JSON string
 
         <h3>PayAI Network Facilitator (USDC Payments)</h3>
         <div class="endpoint-card">
-          <p style="color: #cbd5e1; margin-bottom: 1rem;">For PayAI facilitator, no transaction needed (SDK handles USDC transfer):</p>
+          <p style="color: #cbd5e1; margin-bottom: 1rem;">For PayAI facilitator, build USDC transfer with facilitator as fee payer:</p>
 <pre><code>{
   "paymentPayload": {
-    "signedIntent": {
-      "publicKey": "3HBV2F9C25k8169rKv6FDqaFHj52NYH5JJjFYDo5nAZ",
-      "signature": "2a8b9c..."  // Base58-encoded signature
-    },
+    "x402Version": 1,
+    "scheme": "exact",
     "network": "solana",
-    "facilitator": "payai",
-    "treasury": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR"
+    "payload": {
+      "transaction": "AgAAAA..."  // Base64-encoded partially-signed transaction
+    }
   },
   "paymentRequirements": {
-    "amount": 150,  // In micro-USDC (150 = 0.000150 USDC ≈ $0.00015)
-    "recipient": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",
-    "nonce": "1762210242077-0.123",
-    "network": "solana"
+    "scheme": "exact",
+    "network": "solana",
+    "maxAmountRequired": "150",  // In micro-USDC (150 = 0.000150 USDC ≈ $0.00015)
+    "asset": {
+      "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    },
+    "payTo": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",
+    "resource": "/rpc",
+    "description": "x402 RPC payment",
+    "extra": {
+      "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+    }
   }
 }</code></pre>
         </div>
@@ -713,7 +720,7 @@ Value: JSON string
 <pre><code>const payment = {
   paymentPayload: {
     signedIntent: { /* ... */ },
-    txBase64: "...",  // X-Labs only
+    txBase64: "...",  // x402labs only
     network: "solana"
   },
   paymentRequirements: {
@@ -742,12 +749,11 @@ const response = await fetch('https://x402labs.cloud/rpc', {
           <p style="color: #cbd5e1; margin-bottom: 1rem;">The payment header is validated for:</p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
             <li>Valid JSON format</li>
-            <li>Ed25519 signature verification (signedIntent)</li>
-            <li>Amount matches expected cost (from 402 response)</li>
-            <li>Recipient matches facilitator wallet</li>
+            <li>Ed25519 signature verification (x402labs only)</li>
+            <li>Recipient matches treasury wallet</li>
             <li>Nonce is unique (prevents replay attacks)</li>
-            <li>For X-Labs: Transaction contains valid SOL transfer</li>
-            <li>For PayAI: Signature verified by PayAI SDK</li>
+            <li><strong>x402labs:</strong> Transaction contains valid SOL transfer (≥890,880 lamports)</li>
+            <li><strong>PayAI:</strong> Partially-signed USDC transaction verified by PayAI Network</li>
           </ul>
         </div>
       </section>
@@ -1059,7 +1065,7 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
           
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Why am I getting "Payment verification failed" with SOL payments?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> You must specify <span class="inline-code">"facilitator": "xlab"</span> in your request body for SOL payments. 
+            <strong>A:</strong> You must specify <span class="inline-code">"facilitator": "x402labs"</span> in your request body for SOL payments. 
             Without this, the system defaults to PayAI Network, which expects USDC payments and will fail when receiving SOL.
           </p>
 <pre><code>// ✅ Correct - Specify facilitator for SOL
@@ -1067,32 +1073,32 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
   "method": "getSlot",
   "params": [],
   "chain": "solana",
-  "facilitator": "xlab"  // ← Required for SOL payments!
+  "facilitator": "x402labs"  // ← Required for SOL payments!
 }</code></pre>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What's the difference between X-Labs and PayAI facilitators?</h4>
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What's the difference between x402labs and PayAI facilitators?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
             <strong>A:</strong> They use different payment tokens:
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li><strong>X-Labs ("xlab"):</strong> Uses SOL for payments. You send a signed SOL transfer transaction.</li>
-            <li><strong>PayAI ("payai"):</strong> Uses USDC for payments. The PayAI SDK handles USDC transfers for you.</li>
+            <li><strong>x402labs ("x402labs"):</strong> Self-hosted facilitator using SOL payments. You send a signed SOL transfer transaction.</li>
+            <li><strong>PayAI ("payai"):</strong> Network facilitator using USDC payments. PayAI handles settlement and broadcasting.</li>
           </ul>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Can I send more lamports than requested (e.g., include rent-exemption)?</h4>
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Why do I need to send 890,880 lamports minimum for x402labs?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> Yes, for X-Labs facilitator. The verification checks for a valid SOL transfer to the correct recipient,
-            but doesn't validate the exact lamport amount. Sending 890880 lamports instead of 749 is acceptable.
+            <strong>A:</strong> Solana requires accounts to hold at least 890,880 lamports to be rent-exempt. 
+            The system automatically ensures SOL payments meet this minimum, even if the provider cost is lower.
+            This prevents "InsufficientFundsForRent" errors.
           </p>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What encoding should I use for signatures and transactions?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> Use <strong>base58</strong> encoding for all Solana-related fields:
+            <strong>A:</strong> Encoding depends on the facilitator:
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li><span class="inline-code">signedIntent.publicKey</span> - base58</li>
-            <li><span class="inline-code">signedIntent.signature</span> - base58</li>
-            <li><span class="inline-code">txBase64</span> - base58 (despite the name!)</li>
+            <li><strong>x402labs (SOL):</strong> Use base58 for publicKey, signature, and txBase64</li>
+            <li><strong>PayAI (USDC):</strong> Use base64 for payload.transaction</li>
           </ul>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Should network be "solana" or "solana-mainnet"?</h4>
@@ -1104,28 +1110,36 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
         <div class="endpoint-card" style="margin-top: 2rem;">
           <h3 style="color: #a78bfa; margin-bottom: 1rem;">Pricing & Payments</h3>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Why does the payment show 749 lamports but costs say $0.00015?</h4>
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How much do payments cost?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> The amount in the 402 response is in base units:
+            <strong>A:</strong> Costs vary by facilitator:
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li><strong>SOL:</strong> 749 lamports = 0.000000749 SOL ≈ $0.00015 USD (@ $200/SOL)</li>
-            <li><strong>USDC:</strong> 150 micro-USDC = 0.000150 USDC = $0.00015 USD (1:1)</li>
+            <li><strong>x402labs (SOL):</strong> 890,880 lamports per call (~$0.0054 at $165/SOL) - fixed rent-exempt amount</li>
+            <li><strong>PayAI (USDC):</strong> 100-200 micro-USDC per call (~$0.0001-$0.0002) - varies by provider</li>
           </ul>
+          <p style="color: #94a3b8; margin-top: 1rem;">
+            For micro-payments below $0.001, PayAI with USDC is more cost-effective than x402labs with SOL.
+          </p>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How are prices calculated for SOL payments?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> Provider costs are in USD. For SOL payments, we convert USD to SOL using an approximate rate of $200/SOL.
-            For example: $0.00015 USD ÷ $200/SOL = 0.000000749 SOL = 749 lamports.
+            <strong>A:</strong> For x402labs facilitator, all SOL payments use the rent-exempt minimum of 890,880 lamports.
+            This ensures the treasury wallet stays active on Solana and prevents "InsufficientFundsForRent" errors.
           </p>
+          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+            <li>All calls cost: 890,880 lamports (~$0.0054 USD at $165/SOL)</li>
+            <li>This is required by Solana's rent-exemption rules</li>
+            <li>For micro-payments, use PayAI with USDC instead</li>
+          </ul>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Which facilitator should I use?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
             <strong>A:</strong> Depends on your preference:
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li><strong>X-Labs ("xlab"):</strong> If you want to pay with SOL directly</li>
-            <li><strong>PayAI ("payai"):</strong> If you want to pay with USDC (recommended for stable pricing)</li>
+            <li><strong>x402labs ("x402labs"):</strong> Self-hosted, pay with SOL (890,880 lamports per call)</li>
+            <li><strong>PayAI ("payai"):</strong> Network service, pay with USDC (100-200 micro-USDC per call, recommended for micro-payments)</li>
           </ul>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Are payments refundable if the RPC call fails?</h4>
@@ -1162,7 +1176,7 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Does the backend check my payment on-chain?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> For X-Labs, the backend:
+            <strong>A:</strong> For x402labs, the backend:
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
             <li>Verifies your signature on the payment intent</li>
@@ -1175,45 +1189,15 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
             The backend doesn't query for pre-existing transactions - it broadcasts the transaction you provide in <span class="inline-code">txBase64</span>.
           </p>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: My transaction is already confirmed on-chain. Why does verification fail?</h4>
-          <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> If you broadcast the transaction yourself BEFORE sending it to the backend, 
-            the backend will fail when trying to broadcast it again (duplicate transaction error). 
-            Instead, send the SIGNED transaction to the backend via <span class="inline-code">txBase64</span>, 
-            and let the backend broadcast it during settlement.
-          </p>
         </div>
 
         <div class="endpoint-card" style="margin-top: 2rem;">
           <h3 style="color: #a78bfa; margin-bottom: 1rem;">Troubleshooting</h3>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "Network not supported: solana"</h4>
-          <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> This is fixed in the latest version. Both "solana" and "solana-mainnet" are now accepted and auto-normalized.
-          </p>
-
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "X-Labs facilitator not available"</h4>
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "x402labs facilitator not available"</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
             <strong>A:</strong> The backend is missing the <span class="inline-code">SOLANA_PRIVATE_KEY</span> environment variable. 
-            X-Labs facilitator requires a Solana keypair to be configured on the server. Use PayAI instead or contact the server administrator.
-          </p>
-
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "Invalid signature on payment intent"</h4>
-          <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> Check that:
-          </p>
-          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li>Payment intent message matches exactly: <span class="inline-code">{"amount":749,"to":"...","nonce":"...","resource":"/rpc"}</span></li>
-            <li>Using the exact nonce from <span class="inline-code">accepts[0].extra.nonce</span></li>
-            <li>Signature is ed25519 (64 bytes)</li>
-            <li>Signature is base58-encoded</li>
-            <li>PublicKey matches the signer</li>
-          </ul>
-
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Error: "Simulation error: failed to get recent blockhash: Error: 429"</h4>
-          <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> This is a rate limit error during transaction simulation, but it's handled gracefully. 
-            The verification will skip simulation and proceed with signature validation only. Your payment should still succeed.
+            Use PayAI instead or contact the server administrator.
           </p>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How do I know which facilitator is available?</h4>
@@ -1222,13 +1206,13 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
           </p>
 <pre><code>"extra": {
   "facilitator": {
-    "primary": "X-Labs solana network",  // Primary facilitator
-    "type": "xlab",                       // Use this value
+    "primary": "x402labs",  // Primary facilitator
+    "type": "x402labs",                   // Use this value
     "fallback": "PayAI Network"           // Backup if primary fails
   }
 }</code></pre>
           <p style="color: #94a3b8; margin-top: 1rem;">
-            Use the <span class="inline-code">type</span> value in your request body: <span class="inline-code">"facilitator": "xlab"</span>
+            Use the <span class="inline-code">type</span> value in your request body: <span class="inline-code">"facilitator": "x402labs"</span>
           </p>
         </div>
 
@@ -1246,7 +1230,7 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
   "preferences": {
     "preferredProviders": ["quicknode-solana"]
   },
-  "facilitator": "xlab"  // or "payai"
+  "facilitator": "x402labs"  // or "payai"
 }</code></pre>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Which provider will be selected if I don't specify preferences?</h4>
@@ -1280,18 +1264,19 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
         <div class="endpoint-card" style="margin-top: 2rem;">
           <h3 style="color: #a78bfa; margin-bottom: 1rem;">Advanced</h3>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Do I need to wait after my transaction confirms on-chain?</h4>
+          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Do I need to broadcast my transaction before sending to backend?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> No! Don't broadcast your transaction yourself. Instead:
+            <strong>A:</strong> <strong>No!</strong> For x402labs, the flow is:
           </p>
           <ol style="list-style-type: decimal; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li>Sign the transaction with your wallet</li>
+            <li>Build and sign the transaction with your wallet</li>
             <li>Serialize and encode to base58</li>
-            <li>Send in <span class="inline-code">txBase64</span> field</li>
+            <li>Send in <span class="inline-code">txBase64</span> field to backend</li>
             <li>Backend broadcasts and waits for confirmation</li>
+            <li>Backend returns transaction signature</li>
           </ol>
           <p style="color: #94a3b8; margin-top: 1rem;">
-            If you broadcast before sending to backend, you'll get "transaction already processed" errors.
+            For PayAI, you partially sign with facilitator as fee payer, and PayAI completes and broadcasts the transaction.
           </p>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: How do batch payments work?</h4>
@@ -1305,10 +1290,13 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
             <strong>A:</strong> All costs are in USD:
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li>Triton One: $0.0001 USD = 500 lamports (SOL) or 100 micro-USDC</li>
-            <li>Helius: $0.00015 USD = 749 lamports (SOL) or 150 micro-USDC</li>
-            <li>QuickNode: $0.0002 USD = 1,000 lamports (SOL) or 200 micro-USDC</li>
+            <li>Triton One: $0.0001 USD = 890,880 lamports (SOL, rent-exempt) or 100 micro-USDC</li>
+            <li>Helius: $0.00015 USD = 890,880 lamports (SOL, rent-exempt) or 150 micro-USDC</li>
+            <li>QuickNode: $0.0002 USD = 890,880 lamports (SOL, rent-exempt) or 200 micro-USDC</li>
           </ul>
+          <p style="color: #94a3b8; margin-top: 1rem;">
+            <strong>Note:</strong> SOL payments use rent-exempt minimum (890,880 lamports) to ensure treasury wallet stays active.
+          </p>
         </div>
 
         <div class="endpoint-card" style="margin-top: 2rem;">
@@ -1340,6 +1328,9 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
       </section>
     </main>
   </div>
+
+  <!-- Real-Time Pricing Widget -->
+  <script src="/shared-pricing-widget.js"></script>
 </body>
 </html>
 
