@@ -137,9 +137,23 @@ export class PayAISdkFacilitator {
       console.log(`🌐 Calling PayAI x402-solana SDK verifyPayment()...`);
       console.log(`   SDK: x402-solana (https://github.com/PayAINetwork/x402-solana)`);
       
-      // Per https://github.com/PayAINetwork/x402-solana#server
-      // verifyPayment(header: string, requirements: PaymentRequirements)
-      const paymentHeaderJson = JSON.stringify(paymentPayload);
+      // CRITICAL: The x402-solana SDK's verifyPayment() expects:
+      // - header: the x402 payment header as base64 (the full x402 envelope with x402Version, scheme, network, payload)
+      // - requirements: PaymentRequirements object
+      // 
+      // The SDK then internally constructs the full request payload as:
+      // { paymentPayload: { parsed from header }, paymentRequirements: requirements }
+      // and sends it to https://facilitator.payai.network/verify
+      
+      // Create the x402 payment header (full envelope)
+      const x402Header = {
+        x402Version: paymentPayload.x402Version || 1,
+        scheme: paymentPayload.scheme,
+        network: paymentPayload.network,
+        payload: paymentPayload.payload  // Contains the transaction
+      };
+      
+      const paymentHeaderJson = JSON.stringify(x402Header);
       const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
       
       console.log(`   Payment Header (base64, first 100 chars):`, paymentHeader.substring(0, 100) + '...');
@@ -150,7 +164,7 @@ export class PayAISdkFacilitator {
       console.log(`📤 Calling this.handler.verifyPayment()...`);
       console.log(`   Handler type:`, typeof this.handler);
       console.log(`   Handler.verifyPayment type:`, typeof this.handler.verifyPayment);
-      console.log(`   Payment header format: base64-encoded JSON of full x402 payload`);
+      console.log(`   Payment header format: base64-encoded x402 payment header`);
       console.log(`   Header length: ${paymentHeader.length} chars`);
       
       // Log what's being sent to the handler
@@ -229,15 +243,13 @@ export class PayAISdkFacilitator {
         };
       }
 
-      // CRITICAL: Use same normalization as verify
+      // CRITICAL: Use same normalization as verify (no mimeType or maxTimeoutSeconds)
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
         resource: paymentRequirements.resource || '',
         description: paymentRequirements.description || 'Payment via x402',
-        mimeType: paymentRequirements.mimeType || 'application/json',
-        maxTimeoutSeconds: paymentRequirements.maxTimeoutSeconds || 300,
         extra: paymentRequirements.extra || {},
         // Normalize asset to OBJECT
         asset: {
@@ -258,8 +270,15 @@ export class PayAISdkFacilitator {
         sdkRequirements.outputSchema = paymentRequirements.outputSchema;
       }
 
-      // CRITICAL: PayAI SDK expects base64-encoded payment header string (same as verify)
-      const paymentHeaderJson = JSON.stringify(paymentPayload);
+      // CRITICAL: Create the x402 payment header (full envelope) - same as verify
+      const x402Header = {
+        x402Version: paymentPayload.x402Version || 1,
+        scheme: paymentPayload.scheme,
+        network: paymentPayload.network,
+        payload: paymentPayload.payload  // Contains the transaction
+      };
+      
+      const paymentHeaderJson = JSON.stringify(x402Header);
       const paymentHeader = Buffer.from(paymentHeaderJson).toString('base64');
 
       console.log(`🌐 Calling PayAI SDK settlePayment method...`);
