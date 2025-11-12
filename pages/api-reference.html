@@ -702,9 +702,9 @@
         
         <h3>1. Request Data</h3>
 <pre><code>{
-  "method": "getSlot",
+    "method": "getSlot",
   "params": [],
-  "chain": "solana"
+    "chain": "solana"
 }</code></pre>
 
         <h3>2. Interpret 402 Challenge</h3>
@@ -726,7 +726,7 @@
         },
         "feePayer": "HsozMJWWHNADoZRmhDGKzua6XW6NNfNDdQ4CkE9i5wHt",
         "nonce": "1762898224761-0.11427330977237005"
-      }
+  }
     }
   ]
 }</code></pre>
@@ -852,8 +852,8 @@ console.log(result.x402.paymentInfo); // Payment metadata</code></pre>
         },
         "feePayer": "HsozMJWWHNADoZRmhDGKzua6XW6NNfNDdQ4CkE9i5wHt",
         "nonce": "1762898224761-0.11427330977237005"
-      }
     }
+  }
   ]
 }</code></pre>
         </div>
@@ -889,17 +889,17 @@ Value: JSON string
   "type": "object",
   "required": ["paymentPayload", "paymentRequirements"],
   "properties": {
-    "paymentPayload": {
+  "paymentPayload": {
       "type": "object",
       "description": "Facilitator-specific proof",
       "properties": {
-        "signedIntent": {
+    "signedIntent": {
           "type": "object",
           "properties": {
             "publicKey": { "type": "string" },
             "signature": { "type": "string" }
           }
-        },
+    },
         "x402Version": { "type": "number" },
         "scheme": { "type": "string" },
         "network": { "type": "string" },
@@ -912,8 +912,8 @@ Value: JSON string
           }
         }
       }
-    },
-    "paymentRequirements": {
+  },
+  "paymentRequirements": {
       "type": "object",
       "properties": {
         "scheme": { "type": "string" },

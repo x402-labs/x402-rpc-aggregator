@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Live Demo | x402 Labs - Micropayments for the Machine Economy</title>
-  <link rel="icon" type="image/png" href="/assets/FullLogo_Transparent.png">
+  <link rel="icon" type="image/png" href="/assets/xlabs-new.png">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   
   <!-- Enhanced Buffer polyfill for Solana web3.js -->
@@ -317,6 +317,49 @@
     /* Status panels */
     .bg-orange-900 { background-color: rgba(23,124,207,0.08) !important; }
     .border-orange-500 { border-color: rgba(23,124,207,0.35) !important; }
+    .log-pane {
+      background-color: var(--soft) !important;
+      color: var(--text) !important;
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      max-height: 14rem;
+      overflow: auto;
+      transition: max-height 0.25s ease;
+    }
+    .log-pane.expanded {
+      max-height: 32rem;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .panel-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .panel-button {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(23,124,207,0.25);
+      background: rgba(23,124,207,0.08);
+      color: var(--primaryDark);
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .panel-button:hover {
+      background: rgba(23,124,207,0.15);
+      transform: translateY(-1px);
+    }
+    .panel-button.is-active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primaryDark) 100%);
+      color: #fff;
+      border-color: transparent;
+    }
   </style>
   
   <!-- Header Navigation (consistent across all pages) -->
@@ -356,7 +399,7 @@
   <header class="main-header">
     <div class="header-content">
       <a href="/" style="display: flex; align-items: center;">
-        <img src="/assets/FullLogo_Transparent.png" alt="x402 Labs" style="height: 50px; width: auto;">
+        <img src="/assets/xlabs-new.png" alt="x402 Labs" style="height: 64px; width: auto;">
       </a>
       <nav class="main-nav">
         <a href="/">Home</a>
@@ -397,11 +440,19 @@
 
         <div class="bg-gray-800 p-6 rounded-xl">
           <h2 class="text-xl font-semibold mb-4">2. Make RPC Call</h2>
-          <select id="facilitator" class="w-full p-2 bg-gray-700 rounded mb-3">
-            <option value="payai">PayAI Network (USDC on Solana)</option>
-            <option value="x402labs" selected>x402labs (SOL)</option>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Network</label>
+          <select id="chain" class="w-full p-2 bg-gray-700 rounded mb-2">
+            <option value="solana">Solana</option>
+            <option value="base">Base</option>
           </select>
-          <p class="text-xs text-gray-400 mb-2">💡 x402labs uses SOL, PayAI uses USDC via PayAI Network facilitator</p>
+          <p class="text-xs text-gray-400 mb-3 italic">Choose the chain. Solana supports CodeNut, PayAI, or x402labs. Base currently routes through CodeNut.</p>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Payment Facilitator</label>
+          <select id="facilitator" class="w-full p-2 bg-gray-700 rounded mb-1">
+            <option value="codenut"> CodeNut Pay - USDC (Solana/Base) - Zero-config, multi-chain</option>
+            <option value="payai">🌐 PayAI Network - USDC (Solana) - Fast settlement, no fees</option>
+            <option value="x402labs" selected> x402labs - SOL (Solana) - Self-hosted, full control</option>
+          </select>
+          <p id="facilitator-help" class="text-xs text-gray-400 mb-3 italic">Choose how you want to pay: USDC (CodeNut/PayAI) or SOL (x402labs)</p>
           <select id="method" class="w-full p-2 bg-gray-700 rounded mb-3">
             <option value="getSlot">getSlot (Solana) - no params needed</option>
             <option value="getBalance">getBalance (Solana) - needs address</option>
@@ -427,13 +478,25 @@
       <!-- RIGHT: Response -->
       <div class="space-y-6">
         <div class="bg-gray-800 p-6 rounded-xl">
-          <h2 class="text-xl font-semibold mb-4">Request</h2>
-          <pre id="request" class="bg-gray-900 p-3 rounded text-xs overflow-auto h-32 text-green-400"></pre>
+          <div class="panel-header">
+            <h2 class="text-xl font-semibold">Request</h2>
+            <div class="panel-actions">
+              <button class="panel-button" data-copy="request">Copy</button>
+              <button class="panel-button" data-toggle="request">Expand</button>
+            </div>
+          </div>
+          <pre id="request" class="log-pane text-green-400"></pre>
         </div>
 
         <div class="bg-gray-800 p-6 rounded-xl">
-          <h2 class="text-xl font-semibold mb-4">Response</h2>
-          <pre id="response" class="bg-gray-900 p-3 rounded text-xs overflow-auto h-48 text-blue-300"></pre>
+          <div class="panel-header">
+            <h2 class="text-xl font-semibold">Response</h2>
+            <div class="panel-actions">
+              <button class="panel-button" data-copy="response">Copy</button>
+              <button class="panel-button" data-toggle="response">Expand</button>
+            </div>
+          </div>
+          <pre id="response" class="log-pane text-blue-300"></pre>
         </div>
       </div>
     </div>
@@ -453,10 +516,163 @@
     let wallet = null;
     let currentInvoice = null;
     let sampleTxBase58 = null;
+    const chainSelect = document.getElementById('chain');
+    const methodSelect = document.getElementById('method');
+    const facilitatorSelect = document.getElementById('facilitator');
+    const facilitatorHelp = document.getElementById('facilitator-help');
+    const paramsInputElement = document.getElementById('params');
+    const walletInfo = document.getElementById('wallet');
+    const statusPanel = document.getElementById('status');
+    
+    const CHAIN_METHODS = {
+      solana: [
+        { value: 'getSlot', label: 'getSlot (Solana) - no params needed' },
+        { value: 'getBalance', label: 'getBalance (Solana) - needs address' },
+        { value: 'getAccountInfo', label: 'getAccountInfo (Solana) - get account data' },
+        { value: 'getTransaction', label: 'getTransaction (Solana) - get tx by signature' },
+        { value: 'getTokenAccountsByOwner', label: 'getTokenAccountsByOwner (Solana) - SPL tokens' },
+        { value: 'getSignaturesForAddress', label: 'getSignaturesForAddress (Solana) - tx history' },
+        { value: 'sendTransaction', label: 'sendTransaction (Solana) - broadcast tx' },
+      ],
+      base: [
+        { value: 'eth_blockNumber', label: 'eth_blockNumber (Base) - no params needed' },
+      ],
+    };
+    
+    const METHOD_PLACEHOLDERS = {
+      getSlot: 'No params needed - leave empty',
+      getBalance: 'Paste a Solana address (e.g., EPjFWdd5AufqSSqeM2...)',
+      getAccountInfo: 'Paste a Solana address to inspect',
+      getTransaction: 'Paste a transaction signature (base58)',
+      getTokenAccountsByOwner: '["<wallet-address>", {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}]',
+      getSignaturesForAddress: 'Paste a wallet address for tx history',
+      sendTransaction: 'Click "Build Sample Transaction" first, or paste base58 tx',
+      eth_blockNumber: 'No params needed - leave empty',
+    };
+    
+    const FACILITATORS_BY_CHAIN = {
+      solana: ['codenut', 'payai', 'x402labs'],
+      base: ['codenut'],
+    };
+    
+    const FACILITATOR_NOTES = {
+      solana: 'Use SOL with x402labs or USDC via CodeNut / PayAI on Solana.',
+      base: 'Base payments settle via CodeNut Pay (USDC) and prompt an EVM wallet such as MetaMask.',
+    };
+    
+    walletInfo.innerHTML = `<span class="text-xs text-gray-400">Connect Phantom to explore Solana payments. No Phantom? Install it or switch the network selector to Base to try the CodeNut + MetaMask flow.</span>`;
+    statusPanel.innerHTML = `<div class="bg-gray-700 rounded-lg p-3 text-xs text-gray-500">Ready when you are. Select a network and method, then hit “Call RPC” to fetch data. You will get a 402 challenge before the payment step.</div>`;
+    
+    function renderMethods(chain) {
+      const options = CHAIN_METHODS[chain] || [];
+      methodSelect.innerHTML = '';
+      options.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt.value;
+        optionEl.textContent = opt.label;
+        methodSelect.appendChild(optionEl);
+      });
+      methodSelect.dispatchEvent(new Event('change'));
+    }
+    
+    function updateFacilitatorOptions(chain) {
+      const allowed = new Set(FACILITATORS_BY_CHAIN[chain] || []);
+      Array.from(facilitatorSelect.options).forEach(option => {
+        const isAllowed = allowed.has(option.value);
+        option.disabled = !isAllowed;
+        option.hidden = !isAllowed;
+      });
+      if (facilitatorSelect.options[facilitatorSelect.selectedIndex]?.disabled ||
+          facilitatorSelect.options[facilitatorSelect.selectedIndex]?.hidden) {
+        const firstAllowed = Array.from(facilitatorSelect.options).find(opt => !opt.disabled && !opt.hidden);
+        if (firstAllowed) {
+          facilitatorSelect.value = firstAllowed.value;
+        }
+      }
+      facilitatorHelp.textContent = FACILITATOR_NOTES[chain] || 'Select a facilitator compatible with this network.';
+    }
+    
+    function updateParamsPlaceholder() {
+      const method = methodSelect.value;
+      paramsInputElement.placeholder = METHOD_PLACEHOLDERS[method] || 'Enter params as JSON array';
+    }
+    
+    function attachPanelControls(id) {
+      const copyBtn = document.querySelector(`[data-copy="${id}"]`);
+      const toggleBtn = document.querySelector(`[data-toggle="${id}"]`);
+      const pane = document.getElementById(id);
+      if (copyBtn && pane) {
+        const original = copyBtn.textContent;
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(pane.textContent || '');
+            copyBtn.classList.add('is-active');
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => {
+              copyBtn.classList.remove('is-active');
+              copyBtn.textContent = original;
+            }, 1200);
+          } catch (err) {
+            console.error('Clipboard copy failed', err);
+          }
+        });
+      }
+      if (toggleBtn && pane) {
+        toggleBtn.addEventListener('click', () => {
+          const expanded = pane.classList.toggle('expanded');
+          toggleBtn.textContent = expanded ? 'Collapse' : 'Expand';
+          toggleBtn.classList.toggle('is-active', expanded);
+        });
+      }
+    }
+    
+    ['request', 'response'].forEach(attachPanelControls);
+    renderMethods(chainSelect.value);
+    updateFacilitatorOptions(chainSelect.value);
+    updateParamsPlaceholder();
+    
+    chainSelect.addEventListener('change', () => {
+      currentInvoice = null;
+      renderMethods(chainSelect.value);
+      updateFacilitatorOptions(chainSelect.value);
+      updateParamsPlaceholder();
+      paramsInputElement.value = '';
+      statusPanel.innerHTML = `<div class="bg-gray-700 rounded-lg p-3 text-xs text-gray-500">Network switched to ${chainSelect.value.toUpperCase()}. Pick a method, facilitator, then call RPC.</div>`;
+    });
+    
+    methodSelect.addEventListener('change', (e) => {
+      const buildBtn = document.getElementById('buildTx');
+      const method = e.target.value;
+      
+      if (method === 'sendTransaction') {
+        buildBtn.style.display = 'block';
+        buildBtn.innerHTML = '📦 Build Sample Transaction';
+        buildBtn.classList.remove('bg-green-600');
+        if (!buildBtn.classList.contains('bg-blue-600')) {
+          buildBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        }
+        paramsInputElement.placeholder = METHOD_PLACEHOLDERS[method];
+      } else {
+        buildBtn.style.display = 'none';
+      }
+      updateParamsPlaceholder();
+    });
 
     document.getElementById('connect').onclick = async () => {
       if (!window.solana?.isPhantom) {
-        document.getElementById('wallet').innerHTML = `<span class="text-red-400">Phantom not found</span>`;
+        walletInfo.innerHTML = `
+          <div class="bg-gray-700 rounded-lg p-3 text-sm">
+            <p class="text-red-500 font-semibold mb-2">Phantom wallet not detected.</p>
+            <p class="text-gray-500 mb-3">Install the <a href="https://phantom.app/" class="underline text-blue-500" target="_blank" rel="noopener noreferrer">Phantom browser extension</a> to try Solana flows. You can also switch the network selector to <strong>Base</strong> and continue with CodeNut + MetaMask.</p>
+            <button id="phantomDismiss" class="panel-button">Dismiss</button>
+          </div>
+        `;
+        const dismissBtn = document.getElementById('phantomDismiss');
+        if (dismissBtn) {
+          dismissBtn.onclick = () => {
+            walletInfo.innerHTML = `<span class="text-xs text-gray-400">You can continue without Phantom. For SOL payments install Phantom; for Base select CodeNut and approve the MetaMask prompt when paying.</span>`;
+          };
+        }
         return;
       }
       
@@ -466,7 +682,7 @@
         
         const balanceCheck = await checkBalance(wallet);
         
-        document.getElementById('wallet').innerHTML = `
+        walletInfo.innerHTML = `
           <span class="text-green-400">✅ Connected</span><br>
           <span class="text-xs">${wallet.publicKey.toBase58().slice(0,8)}...</span><br>
           <span class="text-sm ${balanceCheck.solSufficient ? 'text-green-400' : 'text-orange-400'}">SOL: ${balanceCheck.solCurrent}</span><br>
@@ -475,44 +691,20 @@
           ${!balanceCheck.usdcSufficient ? '<br><span class="text-orange-400 text-xs">⚠️ Low USDC (for PayAI)</span>' : ''}
         `;
         
-        // Auto-select best facilitator based on balance
-        const facilitatorSelect = document.getElementById('facilitator');
+        if (chainSelect.value === 'solana') {
         if (balanceCheck.solSufficient && !balanceCheck.usdcSufficient) {
           facilitatorSelect.value = 'x402labs';
           console.log('💡 Auto-selected x402labs (you have SOL but no USDC)');
         } else if (balanceCheck.usdcSufficient && !balanceCheck.solSufficient) {
-          facilitatorSelect.value = 'payai';
-          console.log('💡 Auto-selected PayAI (you have USDC but no SOL)');
+            facilitatorSelect.value = 'codenut';
+            console.log('💡 Auto-selected CodeNut (you have USDC but no SOL)');
         }
-        // If they have both or neither, keep current selection
+        }
+        updateFacilitatorOptions(chainSelect.value);
       } catch (err) {
-        document.getElementById('wallet').innerHTML = `<span class="text-red-400">❌ ${err.message}</span>`;
+        walletInfo.innerHTML = `<span class="text-red-400">❌ ${err.message}</span>`;
       }
     };
-
-    // Show/hide Build Transaction button based on method selection
-    document.getElementById('method').addEventListener('change', (e) => {
-      const buildBtn = document.getElementById('buildTx');
-      const paramsInput = document.getElementById('params');
-      
-      if (e.target.value === 'sendTransaction') {
-        buildBtn.style.display = 'block';
-        paramsInput.placeholder = 'Click "Build Sample Transaction" first, or paste base58 tx';
-      } else {
-        buildBtn.style.display = 'none';
-        // Set helpful placeholders based on method
-        const placeholders = {
-          'getSlot': 'No params needed - leave empty',
-          'getBalance': 'Paste a Solana address (e.g., EPjFWdd5AufqSSqeM2...)',
-          'getAccountInfo': 'Paste a Solana address to inspect',
-          'getTransaction': 'Paste a transaction signature (base58)',
-          'getTokenAccountsByOwner': '["<wallet-address>", {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}]',
-          'getSignaturesForAddress': 'Paste a wallet address for tx history',
-          'eth_blockNumber': 'No params needed - leave empty',
-        };
-        paramsInput.placeholder = placeholders[e.target.value] || 'Enter params as JSON array';
-      }
-    });
 
     // Build sample transaction for sendTransaction
     document.getElementById('buildTx').onclick = async () => {
@@ -575,24 +767,30 @@
     };
 
     // Add facilitator change listener to warn about balance
-    document.getElementById('facilitator').addEventListener('change', async (e) => {
+    facilitatorSelect.addEventListener('change', async (e) => {
       if (!wallet) return;
-      
       const facilitator = e.target.value;
+      const chain = chainSelect.value;
+      if (chain !== 'solana') return;
+      
       const balanceCheck = await checkBalance(wallet);
       
-      if (facilitator === 'payai' && !balanceCheck.usdcSufficient) {
-        alert('⚠️ Warning: You selected PayAI (USDC) but have insufficient USDC.\n\nRecommendation: Use x402labs (SOL) instead.\n\nOr get USDC by swapping SOL → USDC on Jupiter or Raydium.');
+      if ((facilitator === 'payai' || facilitator === 'codenut') && !balanceCheck.usdcSufficient) {
+        alert(`⚠️ Warning: You selected ${facilitator === 'codenut' ? 'CodeNut' : 'PayAI'} (USDC) but have insufficient USDC.\n\nRecommendation: Use x402labs (SOL) instead or acquire USDC before proceeding.`);
       } else if (facilitator === 'x402labs' && !balanceCheck.solSufficient) {
-        alert('⚠️ Warning: You selected x402labs (SOL) but have insufficient SOL.\n\nRecommendation: Use PayAI (USDC) instead if you have USDC.');
+        alert('⚠️ Warning: You selected x402labs (SOL) but have insufficient SOL.\n\nRecommendation: Use CodeNut or PayAI (USDC) instead if you have USDC.');
       }
     });
 
     document.getElementById('call').onclick = async () => {
-      if (!wallet) return alert('Connect wallet first');
+      const method = methodSelect.value;
+      const paramsInput = paramsInputElement.value.trim();
+      const chain = chainSelect.value;
+      const facilitator = facilitatorSelect.value;
 
-      const method = document.getElementById('method').value;
-      const paramsInput = document.getElementById('params').value.trim();
+      if (!wallet && chain === 'solana') {
+        alert('Tip: connect Phantom before paying so you can sign the transaction. You can still preview the invoice without a wallet.');
+      }
       
       // Smart params parsing: handle JSON array, raw string, or empty
       let params = [];
@@ -601,20 +799,16 @@
           params = JSON.parse(paramsInput); // Try parsing as JSON first
           console.log('✅ Parsed params as JSON:', params);
         } catch (e) {
-          // If not valid JSON, treat as a single address/string and wrap in array
           console.log('✅ Auto-wrapped address in array:', [paramsInput]);
           params = [paramsInput];
         }
       } else {
         console.log('✅ No params (empty array)');
       }
-      
-      const facilitator = document.getElementById('facilitator').value;
-      const chain = method.includes('eth') ? 'base' : 'solana';
 
       const req = { method, params, chain, facilitator };
       document.getElementById('request').textContent = JSON.stringify(req, null, 2);
-      document.getElementById('status').innerHTML = `<p class="text-yellow-400">⏳ Sending...</p>`;
+      statusPanel.innerHTML = `<p class="text-yellow-400">⏳ Sending...</p>`;
 
       try {
       const res = await fetch(API, {
@@ -624,7 +818,6 @@
       });
 
       if (res.status === 402) {
-        // x402scan-compliant format
         const x402Response = await res.json();
         
         if (!x402Response.accepts || x402Response.accepts.length === 0) {
@@ -634,41 +827,37 @@
         const paymentDetails = x402Response.accepts[0];
         currentInvoice = paymentDetails; // Store for payNow()
         
-        // Convert base units to human-readable format
         const baseAmount = parseFloat(paymentDetails.maxAmountRequired);
         const asset = paymentDetails.asset;
         let displayAmount = '';
         let usdValue = '';
         
         if (asset === 'USDC') {
-          // micro-USDC to USDC: divide by 1,000,000
           const usdc = baseAmount / 1e6;
           displayAmount = `${usdc.toFixed(6)} USDC`;
           usdValue = `≈ $${usdc.toFixed(6)} USD`;
         } else if (asset === 'SOL') {
-          // lamports to SOL: divide by 1,000,000,000
           const sol = baseAmount / 1e9;
-          const usd = sol * 200; // Approximate @ $200/SOL
+            const usd = sol * 200;
           displayAmount = `${sol.toFixed(9)} SOL`;
           usdValue = `≈ $${usd.toFixed(6)} USD`;
         } else if (asset === 'ETH') {
-          // wei to ETH: divide by 1e18
           const eth = baseAmount / 1e18;
-          const usd = eth * 3000; // Approximate @ $3000/ETH
+            const usd = eth * 3000;
           displayAmount = `${eth.toFixed(12)} ETH`;
           usdValue = `≈ $${usd.toFixed(6)} USD`;
         }
         
         document.getElementById('response').textContent = JSON.stringify(x402Response, null, 2);
-        document.getElementById('status').innerHTML = `
+          statusPanel.innerHTML = `
           <div class="bg-orange-900 bg-opacity-30 border border-orange-500 rounded-lg p-4">
             <p class="text-orange-300 font-semibold mb-2">💳 Payment Required</p>
             <p class="text-orange-200 text-sm mb-2">Amount: <strong>${displayAmount}</strong></p>
             <p class="text-orange-200 text-xs mb-1">${usdValue}</p>
             <p class="text-orange-200 text-sm mb-2">Provider: ${paymentDetails.extra?.provider || 'Best Available'}</p>
-            <p class="text-orange-200 text-xs mb-3">Payment: ${document.getElementById('facilitator').value === 'x402labs' ? 'SOL (x402labs)' : 'USDC (PayAI)'}</p>
+              <p class="text-orange-200 text-xs mb-3">Payment: ${facilitator === 'x402labs' ? 'SOL (x402labs)' : facilitator === 'codenut' ? 'USDC (CodeNut)' : 'USDC (PayAI Network)'}</p>
             <button onclick="payNow()" class="mt-3 w-full px-4 py-2 bg-white text-purple-900 font-bold rounded-lg hover:bg-purple-100">
-              💰 Pay with Phantom
+                💰 Pay Now
             </button>
           </div>
         `;
@@ -676,16 +865,18 @@
           const data = await res.json();
           document.getElementById('response').textContent = JSON.stringify(data, null, 2);
           if (data.x402) {
-            document.getElementById('status').innerHTML = `
+            statusPanel.innerHTML = `
               <div class="bg-green-900 bg-opacity-30 border border-green-500 rounded-lg p-4">
                 <p class="text-green-300 font-semibold">✅ Paid!</p>
                 <p class="text-green-200 text-sm">Tx: <a href="${data.x402.paymentInfo.explorer}" target="_blank" class="underline">${data.x402.paymentInfo.txHash.slice(0,8)}...</a></p>
               </div>
             `;
+          } else {
+            statusPanel.innerHTML = `<p class="text-green-400">✅ Response received.</p>`;
           }
         }
       } catch (err) {
-        document.getElementById('status').innerHTML = `<p class="text-red-400">❌ ${err.message}</p>`;
+        statusPanel.innerHTML = `<p class="text-red-400">❌ ${err.message}</p>`;
       }
     };
 
@@ -758,26 +949,29 @@
     }
 
     async function payNow() {
-      if (!wallet || !currentInvoice) return;
+      if (!currentInvoice) return;
+      const chain = chainSelect.value;
+      if (!wallet && chain === 'solana') {
+        alert('Connect your wallet before attempting to pay.');
+        return;
+      }
 
       try {
-        document.getElementById('status').innerHTML = `<p class="text-yellow-400">⏳ Processing payment...</p>`;
+        statusPanel.innerHTML = `<p class="text-yellow-400">⏳ Processing payment...</p>`;
         
-        const method = document.getElementById('method').value;
-        const paramsInput = document.getElementById('params').value.trim();
+        const method = methodSelect.value;
+        const paramsInput = paramsInputElement.value.trim();
         
-        // Same smart parsing as Call RPC button
         let params = [];
         if (paramsInput) {
           try {
             params = JSON.parse(paramsInput);
           } catch (e) {
-            params = [paramsInput]; // Auto-wrap raw strings
+            params = [paramsInput];
           }
         }
         
-        const facilitator = document.getElementById('facilitator').value;
-        const chain = method.includes('eth') ? 'base' : 'solana';
+        const facilitator = facilitatorSelect.value;
         const req = { method, params, chain, facilitator };
 
         const payment = await buildPayment(currentInvoice, chain);
@@ -797,8 +991,7 @@
           const txHash = data.x402.paymentInfo.txHash;
           const explorerUrl = data.x402.paymentInfo.explorer;
           
-          // Display payment success status
-          document.getElementById('status').innerHTML = `
+          statusPanel.innerHTML = `
             <div class="bg-green-900 bg-opacity-30 border border-green-500 rounded-lg p-4">
               <p class="text-green-300 font-semibold mb-3"> Payment Successful!</p>
               <div class="space-y-2">
@@ -813,19 +1006,15 @@
             </div>
           `;
           
-          // Display RPC result separately (without x402 wrapper)
           const rpcResult = { ...data };
-          delete rpcResult.x402; // Remove payment info from RPC response display
+          delete rpcResult.x402;
           
-          // Check if RPC call had an error
           if (rpcResult.error) {
             document.getElementById('response').innerHTML = `
               <div class="text-orange-300 mb-2"> Payment succeeded, but RPC call failed:</div>
               <pre class="text-orange-200 text-xs">${JSON.stringify(rpcResult, null, 2)}</pre>
             `;
           } else {
-            // Special formatting for sendTransaction results
-            const method = document.getElementById('method').value;
             if (method === 'sendTransaction' && rpcResult.result) {
               document.getElementById('response').innerHTML = `
                 <div class="text-blue-300 mb-2"> Transaction Broadcast Successful!</div>
@@ -842,13 +1031,22 @@
               document.getElementById('response').textContent = JSON.stringify(rpcResult, null, 2);
             }
           }
+        } else if (data.error) {
+          statusPanel.innerHTML = `
+            <div class="bg-red-900 bg-opacity-30 border border-red-500 rounded-lg p-4">
+              <p class="text-red-300 font-semibold mb-2">Payment Failed</p>
+              <p class="text-red-200 text-xs mb-1">${data.error}</p>
+              ${data.facilitator ? `<p class="text-red-200 text-xs">Facilitator: ${data.facilitator}</p>` : ''}
+            </div>
+          `;
+          document.getElementById('response').textContent = JSON.stringify(data, null, 2);
       } else {
-          // No payment info, just show the response
+          statusPanel.innerHTML = `<p class="text-green-300">✅ Payment processed.</p>`;
         document.getElementById('response').textContent = JSON.stringify(data, null, 2);
         }
       } catch (err) {
         console.error('Payment failed:', err);
-        document.getElementById('status').innerHTML = `
+        statusPanel.innerHTML = `
           <div class="bg-red-900 bg-opacity-30 border border-red-500 rounded-lg p-4">
             <p class="text-red-300 font-semibold"> Payment Failed</p>
             <p class="text-red-200 text-sm">${err.message}</p>
@@ -860,7 +1058,7 @@
     async function buildPayment(paymentDetails, chain) {
       try {
         console.log('💰 Building payment for chain:', chain);
-        console.log('   Facilitator:', document.getElementById('facilitator').value);
+        console.log('   Facilitator:', facilitatorSelect.value);
         console.log('   Payment details:', {
           maxAmountRequired: paymentDetails.maxAmountRequired,
           asset: paymentDetails.asset,
@@ -882,8 +1080,178 @@
         };
       }
 
-        const facilitator = document.getElementById('facilitator').value;
+        const facilitator = facilitatorSelect.value;
         const { Transaction, PublicKey, SystemProgram } = window.solanaWeb3;
+
+        // === CODENUT PAY (USDC on Solana/Base) ===
+        // Use same simple pattern as x402labs but with USDC instead of SOL
+        if (facilitator === 'codenut') {
+          console.log('🥜 Using CodeNut facilitator (USDC)');
+          console.log('   Building USDC transfer transaction...');
+          
+          const recipient = new PublicKey(paymentDetails.payTo);
+          const amountBaseUnits = parseInt(paymentDetails.maxAmountRequired, 10);
+          
+          console.log('   Amount (micro-USDC):', amountBaseUnits);
+          console.log('   Recipient:', recipient.toBase58());
+          
+          const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+          const sourceATA = await window.splToken.getAssociatedTokenAddress(usdcMint, wallet.publicKey);
+          
+          console.log('   Source ATA:', sourceATA.toBase58());
+          
+          const feePayerStr = paymentDetails.extra?.feePayer || 'HsozMJWWHNADoZRmhDGKzua6XW6NNfNDdQ4CkE9i5wHt';
+          const feePayer = new PublicKey(feePayerStr);
+          console.log('   Facilitator fee payer:', feePayer.toBase58());
+          
+          const transactionPayer = wallet.publicKey;
+          
+          let destinationAccount = recipient;
+          let requiresATAInit = false;
+          let destinationDescription = 'direct account';
+          
+          try {
+            const payToInfoRes = await fetch(SOLANA_RPC_PROXY, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getAccountInfo',
+                params: [recipient.toBase58(), { encoding: 'jsonParsed' }]
+              })
+            });
+            const payToInfo = await payToInfoRes.json();
+            const accountOwner = payToInfo.result?.value?.owner;
+            const isTokenAccount = accountOwner === window.splToken.TOKEN_PROGRAM_ID.toBase58();
+            
+            if (isTokenAccount) {
+              destinationAccount = recipient;
+              destinationDescription = 'merchant USDC token account (provided in invoice)';
+              console.log('   payTo is already a USDC token account – no ATA derivation needed');
+            } else {
+              destinationAccount = await window.splToken.getAssociatedTokenAddress(usdcMint, recipient);
+              destinationDescription = 'derived merchant USDC ATA';
+              console.log('   Derived merchant ATA from wallet address');
+              
+              try {
+                const ataCheckRes = await fetch(SOLANA_RPC_PROXY, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getAccountInfo',
+                    params: [destinationAccount.toBase58(), { encoding: 'base64' }]
+                  })
+                });
+                const ataCheckData = await ataCheckRes.json();
+                requiresATAInit = !ataCheckData.result?.value;
+              } catch (err) {
+                console.warn('   ⚠️  Unable to confirm facilitator ATA existence, will attempt to create lazily', err);
+                requiresATAInit = true;
+              }
+            }
+          } catch (err) {
+            console.warn('   ⚠️  Could not inspect payTo account – defaulting to derived ATA path', err);
+            destinationAccount = await window.splToken.getAssociatedTokenAddress(usdcMint, recipient);
+            destinationDescription = 'derived merchant USDC ATA (fallback)';
+            requiresATAInit = true;
+          }
+          
+          console.log('   Destination:', destinationAccount.toBase58());
+          console.log('   Destination description:', destinationDescription);
+          console.log('   Will create ATA:', requiresATAInit);
+          
+          const tx = new Transaction();
+          
+          // CodeNut requires compute budget instructions first
+          tx.add(window.splToken.createComputeUnitLimitInstruction(200000));
+          tx.add(window.splToken.createComputeUnitPriceInstruction(1));
+          
+          if (requiresATAInit) {
+            console.log('   Creating facilitator USDC ATA inline...');
+            tx.add(
+              window.splToken.createAssociatedTokenAccountInstruction(
+                feePayer,
+                destinationAccount,
+                recipient,
+                usdcMint
+              )
+            );
+          }
+          
+          tx.add(
+            window.splToken.createTransferCheckedInstruction(
+              sourceATA,
+              usdcMint,
+              destinationAccount,
+              wallet.publicKey,
+              amountBaseUnits,
+              6
+            )
+          );
+          
+          const blockhashRes = await fetch(SOLANA_RPC_PROXY, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'getLatestBlockhash',
+              params: [{ commitment: 'finalized' }]
+            })
+          });
+          const blockhashData = await blockhashRes.json();
+          tx.recentBlockhash = blockhashData.result.value.blockhash;
+          tx.feePayer = feePayer;
+          
+          console.log('   Transaction ready, requesting signature...');
+          
+          let signed;
+          try {
+            signed = await wallet.signTransaction(tx);
+          } catch (err) {
+            console.error('   ❌ Phantom failed to sign transaction', err);
+            throw err;
+          }
+          const serialized = signed.serialize({ requireAllSignatures: false });
+          
+          const binaryChunks = [];
+          const chunkSize = 8192;
+          for (let i = 0; i < serialized.length; i += chunkSize) {
+            const chunk = Array.from(serialized.slice(i, i + chunkSize));
+            binaryChunks.push(String.fromCharCode.apply(null, chunk));
+          }
+          const txBase64 = btoa(binaryChunks.join(''));
+          console.log('✅ Transaction signed and encoded (base64), size:', txBase64.length);
+          
+          const codeNutAsset = paymentDetails.asset && paymentDetails.asset !== 'USDC'
+            ? paymentDetails.asset
+            : usdcMint.toBase58();
+          
+          return {
+            paymentPayload: {
+              x402Version: 1,
+              scheme: 'exact',
+              network: 'solana',
+              payload: {
+                transaction: txBase64,
+              },
+            },
+            paymentRequirements: {
+              scheme: 'exact',
+              network: 'solana',
+              maxAmountRequired: String(amountBaseUnits),
+              asset: codeNutAsset,
+              payTo: paymentDetails.payTo,
+              extra: {
+                ...paymentDetails.extra,
+                feePayer: feePayerStr,
+              },
+            },
+          };
+        }
 
         // === PayAI NETWORK (USDC on Solana) ===
         // PayAI x402-solana SDK requires client to build USDC transfer transaction
@@ -952,9 +1320,9 @@
           
           const tx = new Transaction();
           
-          // Instruction 0: Set compute unit limit (PayAI uses 40,000)
+          // Instruction 0: Set compute unit limit (PayAI requires 40,000 units)
           tx.add(
-            window.splToken.createComputeUnitLimitInstruction(40000)  // Per PayAI transaction builder
+            window.splToken.createComputeUnitLimitInstruction(40000)
           );
           
           // Instruction 1: Set compute unit price (minimal)

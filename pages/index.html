@@ -15,7 +15,7 @@
   <meta property="og:title" content="x402 Labs | Micropayments for the Machine Economy™" />
   <meta property="og:description" content="Intelligent RPC aggregator with x402 micropayments. No API keys, no subscriptions." />
   <meta property="og:url" content="https://x402labs.cloud/" />
-  <meta property="og:image" content="https://x402labs.cloud//assets/FullLogo_Transparent.png" />
+  <meta property="og:image" content="https://x402labs.cloud//assets/xlabs-new.png" />
   
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
@@ -23,10 +23,10 @@
   <meta name="twitter:creator" content="@x402labs" />
   <meta name="twitter:title" content="x402 Labs | Micropayments for the Machine Economy™" />
   <meta name="twitter:description" content="Pay-per-call RPC access for AI agents" />
-  <meta name="twitter:image" content="https://x402labs.cloud//assets/FullLogo_Transparent.png" />
+  <meta name="twitter:image" content="https://x402labs.cloud//assets/xlabs-new.png" />
   
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/assets/FullLogo_Transparent.png" />
+  <link rel="icon" type="image/png" href="/assets/xlabs-new.png" />
   
   <!-- Styles -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -130,9 +130,11 @@
     }
     
     .hero-ctas {
-      display: flex;
+      display: inline-flex;
       gap: 1rem;
       justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
       margin-bottom: 4rem;
     }
     
@@ -173,35 +175,192 @@
     }
     
     /* Stats */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 2rem;
-      max-width: 1000px;
-      margin: 0 auto 6rem;
-      padding: 0 2rem;
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem;
+      max-width: 960px;
+      margin: 0 auto 4rem;
+      padding: 0 1.5rem;
     }
     
-    .stat {
-      text-align: center;
-      padding: 1.5rem;
-      background: rgba(139, 92, 246, 0.05);
+    .hero-stat-card {
+      min-width: 180px;
+      padding: 1.25rem 1.75rem;
       border-radius: 1rem;
-      border: 1px solid rgba(139, 92, 246, 0.1);
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      text-align: center;
     }
     
-    .stat-value {
-      font-size: 2.5rem;
+    .hero-stat-value {
+      display: block;
+      font-size: 1.75rem;
       font-weight: 700;
       color: #6366f1;
-      display: block;
     }
     
-    .stat-label {
+    .hero-stat-label {
+      display: block;
+      margin-top: 0.4rem;
+      font-size: 0.85rem;
+      color: #6B7280;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+    
+    .feature-card {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+    }
+    
+    .feature-card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #6366f1;
+    }
+    
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #1e293b;
+    }
+    
+    .feature-card p {
+      color: #334155;
+      line-height: 1.6;
+    }
+    
+    .process-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+    
+    .process-step {
+      text-align: center;
+      padding: 1.5rem;
+    }
+    
+    .process-step .step-number {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .process-step h4 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #1e293b;
+    }
+    
+    .process-step p {
       color: #64748b;
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
-      font-weight: 500;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2rem;
+    }
+    
+    .spec-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 2rem;
+    }
+    
+    .spec-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #f1f5f9;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid #334155;
+    }
+    
+    .spec-card p,
+    .spec-card ul {
+      color: #e2e8f0;
+      line-height: 1.8;
+    }
+    
+    .spec-card ul {
+      list-style-type: disc;
+      padding-left: 1.25rem;
+    }
+    
+    @media (max-width: 1024px) {
+      header {
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      nav {
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+      }
+      .hero {
+        text-align: left;
+      }
+      .hero-ctas {
+        justify-content: flex-start;
+      }
+      .feature-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .process-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .spec-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+      .hero h2 {
+        font-size: 1.4rem;
+      }
+      .hero-ctas {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .hero-ctas .primary-button,
+      .hero-ctas .secondary-button {
+        width: 100%;
+        text-align: center;
+      }
+      .feature-grid,
+      .process-grid {
+        grid-template-columns: 1fr;
+      }
     }
     
     /* Gradient text for headings */
@@ -492,7 +651,7 @@
   <!-- Header -->
   <header>
     <div class="logo">
-      <img src="/assets/FullLogo_Transparent.png" alt="x402 Labs" style="height: 60px; width: auto;">
+        <img src="/assets/xlabs-new.png" alt="x402 Labs" style="height: 72px; width: auto;">
     </div>
     <nav>
       <a href="/">Home</a>
@@ -541,22 +700,22 @@
       <a href="/agent" class="secondary-button" style="font-size: 1.125rem; padding: 16px 32px;">AI Agent Demo</a>
     </div>
     
-    <div class="stats" style="margin-top: 4rem;">
-      <div class="stat">
-        <span class="stat-value" style="color: #22c55e;">$0.0001</span>
-        <span class="stat-label">Price per Call</span>
+    <div class="hero-stats">
+      <div class="hero-stat-card">
+        <span class="hero-stat-value" data-hero-price>$0.0001</span>
+        <span class="hero-stat-label">Price per Call</span>
       </div>
-      <div class="stat">
-        <span class="stat-value">8+</span>
-        <span class="stat-label">RPC Providers</span>
+      <div class="hero-stat-card">
+        <span class="hero-stat-value">8+</span>
+        <span class="hero-stat-label">RPC Providers</span>
       </div>
-      <div class="stat">
-        <span class="stat-value">&lt;3s</span>
-        <span class="stat-label">Settlement Time</span>
+      <div class="hero-stat-card">
+        <span class="hero-stat-value">&lt;3s</span>
+        <span class="hero-stat-label">Settlement Time</span>
       </div>
-      <div class="stat">
-        <span class="stat-value">99.9%</span>
-        <span class="stat-label">Uptime</span>
+      <div class="hero-stat-card">
+        <span class="hero-stat-value">99.9%</span>
+        <span class="hero-stat-label">Uptime</span>
       </div>
     </div>
   </section>
@@ -568,31 +727,31 @@
         <span class="gradient-text">What is x402 RPC Aggregator?</span>
       </h2>
       <p style="font-size: 1.125rem; color: #334155; font-weight: 500; max-width: 800px; margin: 0 auto;">
-        API gateway that intelligently routes RPC calls across multiple blockchain providers with automatic micropayment settlement
+        API gateway that intelligently routes RPC calls across multiple blockchain providers with automatic micropayment settlement, priced dynamically from USD to SOL or USDC
       </p>
     </div>
     
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
-      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 2rem; text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem; color: #6366f1;">⚡</div>
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Multi-Provider Aggregation</h3>
-        <p style="color: #334155; line-height: 1.6;">
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-icon">⚡</div>
+        <h3>Multi-Provider Aggregation</h3>
+        <p>
           Single API endpoint routes to 8+ RPC providers across Solana, Ethereum, and Base chains
         </p>
       </div>
       
-      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 2rem; text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem; color: #6366f1;">🎯</div>
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Intelligent Routing</h3>
-        <p style="color: #334155; line-height: 1.6;">
+      <div class="feature-card">
+        <div class="feature-card-icon">🎯</div>
+        <h3>Intelligent Routing</h3>
+        <p>
           Automatically selects best provider based on cost, latency, priority, or custom preferences
         </p>
       </div>
       
-      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 2rem; text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem; color: #6366f1;">💳</div>
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Micropayment Settlement</h3>
-        <p style="color: #334155; line-height: 1.6;">
+      <div class="feature-card">
+        <div class="feature-card-icon">💳</div>
+        <h3>Micropayment Settlement</h3>
+        <p>
           Pay-per-call with x402 protocol. No API keys, no subscriptions, just autonomous payments
         </p>
       </div>
@@ -607,29 +766,29 @@
       </h2>
     </div>
     
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
-      <div style="text-align: center; padding: 1.5rem;">
-        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: 700; color: white;">1</div>
-        <h4 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Call Unified API</h4>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6;">POST /rpc with your RPC method</p>
+    <div class="process-grid">
+      <div class="process-step">
+        <div class="step-number">1</div>
+        <h4>Call Unified API</h4>
+        <p>POST /rpc with your RPC method</p>
       </div>
       
-      <div style="text-align: center; padding: 1.5rem;">
-        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: 700; color: white;">2</div>
-        <h4 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Intelligent Routing</h4>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6;">System selects best provider (health, cost, latency)</p>
+      <div class="process-step">
+        <div class="step-number">2</div>
+        <h4>Intelligent Routing</h4>
+        <p>System selects best provider (health, cost, latency)</p>
       </div>
       
-      <div style="text-align: center; padding: 1.5rem;">
-        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: 700; color: white;">3</div>
-        <h4 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Pay Automatically</h4>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6;">749 lamports ($0.00015) settled in <1s</p>
+      <div class="process-step">
+        <div class="step-number">3</div>
+        <h4>Pay Automatically</h4>
+        <p>Amount auto-converts from USD to SOL/USDC based on live pricing</p>
       </div>
       
-      <div style="text-align: center; padding: 1.5rem;">
-        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: 700; color: white;">4</div>
-        <h4 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Get RPC Result</h4>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6;">Receive data with payment receipt</p>
+      <div class="process-step">
+        <div class="step-number">4</div>
+        <h4>Get RPC Result</h4>
+        <p>Receive data with payment receipt</p>
       </div>
     </div>
   </section>
@@ -653,8 +812,8 @@
 
 <span style="color: #64748b;">// Agent handles payment automatically!</span>
 console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'Current slot:'</span>, result.result);
-<span style="color: #64748b;">// Payment: 749 lamports ($0.00015)</span>
-<span style="color: #64748b;">// Provider: Auto-selected (Helius)</span>
+<span style="color: #64748b;">// Payment converted from USD to SOL based on live oracle price</span>
+<span style="color: #64748b;">// Provider: Auto-selected</span>
 <span style="color: #64748b;">// Settlement: <1s</span></code></pre>
       
       <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #334155;">
@@ -662,7 +821,7 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
         <ul style="list-style-type: disc; padding-left: 1.5rem; color: #94a3b8; line-height: 1.8;">
           <li>Agent called unified API endpoint</li>
           <li>System selected Helius (highest priority, active)</li>
-          <li>Micropayment settled automatically (749 lamports)</li>
+          <li>Micropayment settled automatically (USD → SOL/USDC conversion)</li>
           <li>RPC result returned with payment receipt</li>
         </ul>
       </div>
@@ -677,10 +836,10 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
       </h2>
     </div>
     
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;">
-      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; padding-bottom: 0.75rem; border-bottom: 2px solid #334155;">API Endpoint</h3>
-        <p style="color: #e2e8f0; margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">
+    <div class="spec-grid">
+      <div class="spec-card">
+        <h3>API Endpoint</h3>
+        <p style="margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">
           https://x402labs.cloud/rpc
         </p>
         <p style="color: #94a3b8; font-size: 0.875rem;">
@@ -688,9 +847,9 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
         </p>
       </div>
       
-      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; padding-bottom: 0.75rem; border-bottom: 2px solid #334155;">Supported Chains</h3>
-        <ul style="list-style-type: disc; padding-left: 1.25rem; color: #e2e8f0; line-height: 1.8;">
+      <div class="spec-card">
+        <h3>Supported Chains</h3>
+        <ul>
           <li>Solana (8+ providers)</li>
           <li>Ethereum (3+ providers)</li>
           <li>Base (2+ providers)</li>
@@ -708,10 +867,11 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
         </ul>
       </div>
       
-      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; padding-bottom: 0.75rem; border-bottom: 2px solid #334155;">Payment Methods</h3>
-        <ul style="list-style-type: disc; padding-left: 1.25rem; color: #e2e8f0; line-height: 1.8;">
+      <div class="spec-card">
+        <h3>Payment Methods</h3>
+        <ul>
           <li>SOL (x402labs facilitator)</li>
+          <li>USDC (CodeNut Pay)</li>
           <li>USDC (PayAI Network)</li>
         </ul>
       </div>
@@ -726,34 +886,17 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
         </ul>
       </div>
       
-      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem;">
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; padding-bottom: 0.75rem; border-bottom: 2px solid #334155;">
+      <div class="spec-card">
+        <h3>
           Real-Time Pricing
           <span style="background: #10b981; color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; margin-left: 0.5rem;">LIVE</span>
         </h3>
         <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; border: 1px solid rgba(16, 185, 129, 0.2);">
           <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.25rem;">SOL/USD</div>
           <div data-sol-price style="font-size: 2rem; font-weight: 700; color: #10b981;">$156.51</div>
-          <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
-            from <span data-price-source>CoinGecko</span> • updated <span data-price-updated>just now</span>
+          <div style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem; line-height: 1.6;">
+            Cost per call converts from USD → SOL/USDC in real time using the Jupiter oracle. Providers define prices in USD; the backend handles token math and rent exemptions automatically.
           </div>
-        </div>
-        <ul style="list-style-type: none; padding: 0; color: #e2e8f0; line-height: 2; font-size: 0.95rem;">
-          <li style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <span style="color: #cbd5e1;">Triton</span>
-            <span style="color: #22c55e; font-weight: 600;"><span data-provider-lamports="Triton One">638</span> lamports</span>
-          </li>
-          <li style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <span style="color: #cbd5e1;">Helius</span>
-            <span style="color: #22c55e; font-weight: 600;"><span data-provider-lamports="Helius">958</span> lamports</span>
-          </li>
-          <li style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
-            <span style="color: #cbd5e1;">QuickNode</span>
-            <span style="color: #22c55e; font-weight: 600;"><span data-provider-lamports="QuickNode Solana">1277</span> lamports</span>
-          </li>
-        </ul>
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.875rem; color: #94a3b8;">
-          💡 Batch discounts: Save 20% on 1000+ calls
         </div>
       </div>
     </div>
