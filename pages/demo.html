@@ -1288,7 +1288,7 @@
           let needsAccountCreation = false;
           
           try {
-            const checkResponse = await fetch('http://localhost:3000/solana-rpc', {
+            const checkResponse = await fetch(SOLANA_RPC_PROXY, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1369,7 +1369,7 @@
           );
           
           // Get fresh blockhash
-          const response = await fetch('http://localhost:3000/solana-rpc', {
+          const response = await fetch(SOLANA_RPC_PROXY, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
