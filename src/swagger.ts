@@ -37,6 +37,10 @@ export const swaggerDocument = {
       description: 'Provider management endpoints',
     },
     {
+      name: 'Pricing',
+      description: 'Pricing and cost endpoints',
+    },
+    {
       name: 'Health',
       description: 'Health check and status endpoints',
     },
@@ -47,6 +51,7 @@ export const swaggerDocument = {
         tags: ['RPC'],
         summary: 'Execute RPC call',
         description: 'Execute an RPC call on the specified chain. Returns 402 if payment required.',
+        security: [{ X402Payment: [] }],
         requestBody: {
           required: true,
           content: {
@@ -72,6 +77,12 @@ export const swaggerDocument = {
                     description: 'Blockchain to query',
                     enum: ['solana', 'ethereum', 'base'],
                     default: 'solana',
+                  },
+                  facilitator: {
+                    type: 'string',
+                    description: 'Payment facilitator to use',
+                    enum: ['x402labs', 'payai', 'codenut', 'auto'],
+                    default: 'auto',
                   },
                   preferences: {
                     type: 'object',
@@ -380,7 +391,38 @@ export const swaggerDocument = {
         ],
         responses: {
           '200': {
-            description: 'Provider details',
+            description: 'Provider details with telemetry',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', example: 'triton-solana' },
+                    name: { type: 'string', example: 'Triton One' },
+                    chains: { type: 'array', items: { type: 'string' } },
+                    costPerCall: { type: 'number', example: 0.0001 },
+                    batchCost: {
+                      type: 'object',
+                      properties: {
+                        calls: { type: 'number' },
+                        price: { type: 'number' },
+                      },
+                    },
+                    status: { type: 'string', enum: ['active', 'degraded', 'offline'] },
+                    priority: { type: 'number' },
+                    averageLatency: { type: 'number', example: 245 },
+                    health: {
+                      type: 'object',
+                      properties: {
+                        lastChecked: { type: 'string', format: 'date-time' },
+                        lastStatus: { type: 'string' },
+                        consecutiveFailures: { type: 'number' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
           '404': {
             description: 'Provider not found',
@@ -432,6 +474,129 @@ export const swaggerDocument = {
         },
       },
     },
+    '/facilitator': {
+      get: {
+        tags: ['Providers'],
+        summary: 'Get facilitator status',
+        description: 'Check primary and fallback payment facilitators',
+        responses: {
+          '200': {
+            description: 'Facilitator configuration',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    primary: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string', example: 'x402labs' },
+                        type: { type: 'string', enum: ['x402labs', 'payai', 'codenut'] },
+                        available: { type: 'boolean' },
+                      },
+                    },
+                    fallback: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        type: { type: 'string' },
+                        available: { type: 'boolean' },
+                      },
+                    },
+                    recommendation: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/pricing/sol-usd': {
+      get: {
+        tags: ['Pricing'],
+        summary: 'Get SOL/USD price',
+        description: 'Fetch current SOL price and derived USD conversions',
+        responses: {
+          '200': {
+            description: 'Price data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    current: {
+                      type: 'object',
+                      properties: {
+                        price: { type: 'number', example: 156.38 },
+                        source: { type: 'string', example: 'Jupiter' },
+                        timestamp: { type: 'string', format: 'date-time' },
+                      },
+                    },
+                    providerCosts: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          provider: { type: 'string' },
+                          usdCost: { type: 'number' },
+                          lamports: { type: 'number' },
+                          sol: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/batch-pricing': {
+      get: {
+        tags: ['Pricing'],
+        summary: 'Get batch pricing options',
+        description: 'Discover prepaid bundle options for discounted per-call rates',
+        parameters: [
+          {
+            name: 'chain',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', enum: ['solana', 'ethereum', 'base'] },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Batch pricing options',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    chain: { type: 'string' },
+                    batchOptions: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          providerId: { type: 'string' },
+                          providerName: { type: 'string' },
+                          calls: { type: 'number', example: 1000 },
+                          price: { type: 'number', example: 0.08 },
+                          pricePerCall: { type: 'number' },
+                          savings: { type: 'string', example: '20.0%' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -451,6 +616,7 @@ export const swaggerDocument = {
             oneOf: [
               { $ref: '#/components/schemas/XLabsPaymentPayload' },
               { $ref: '#/components/schemas/PayAIPaymentPayload' },
+              { $ref: '#/components/schemas/CodeNutPaymentPayload' },
             ],
           },
           paymentRequirements: {
@@ -523,6 +689,44 @@ export const swaggerDocument = {
             type: 'string',
             description: 'PayAI treasury address',
             example: '26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR',
+          },
+        },
+      },
+      CodeNutPaymentPayload: {
+        type: 'object',
+        required: ['x402Version', 'scheme', 'network', 'facilitator', 'payload'],
+        properties: {
+          x402Version: {
+            type: 'number',
+            example: 1,
+            description: 'x402 protocol version',
+          },
+          scheme: {
+            type: 'string',
+            enum: ['exact'],
+            description: 'Payment scheme (exact amount required)',
+          },
+          network: {
+            type: 'string',
+            description: 'Network identifier',
+            enum: ['solana', 'base'],
+            example: 'solana',
+          },
+          facilitator: {
+            type: 'string',
+            enum: ['codenut'],
+            example: 'codenut',
+          },
+          payload: {
+            type: 'object',
+            required: ['transaction'],
+            properties: {
+              transaction: {
+                type: 'string',
+                description: 'Base64-encoded USDC transfer transaction with compute budget instructions',
+                example: 'AgAAAAACAAACr8...',
+              },
+            },
           },
         },
       },

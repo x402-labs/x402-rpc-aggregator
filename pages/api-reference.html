@@ -1,3 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <!-- SEO Meta Tags -->
+  <title>API Reference | x402-RPC-Aggregator Documentation</title>
+  <meta name="description" content="Complete API reference for x402-RPC-Aggregator. Learn how to integrate intelligent RPC routing with x402 micropayments in your AI agents and dApps." />
+  <meta name="keywords" content="x402 API, RPC API, Solana API, Ethereum API, blockchain API, micropayments API" />
+  
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebAPI",
+    "name": "x402-RPC Aggregator API",
+    "description": "Pay-per-call blockchain RPC with x402 micropayment settlement supporting Solana, Ethereum, and Base.",
+    "documentation": "https://x402labs.cloud/api-reference",
+    "provider": {
+      "@type": "Organization",
+      "name": "x402 Labs",
+      "url": "https://x402labs.cloud"
+    },
+    "endpointUrl": "https://x402labs.cloud/rpc",
+    "termsOfService": "https://x402labs.cloud/terms",
+    "servesNetwork": [
+      "https://solana.com/mainnet",
+      "https://ethereum.org/en/developers/docs/networks/",
+      "https://base.org/"
+    ],
+    "potentialAction": [
+      {
+        "@type": "ConsumeAction",
+        "target": {
+          "@type": "EntryPoint",
+          "httpMethod": "POST",
+          "urlTemplate": "https://x402labs.cloud/rpc"
+        },
+        "name": "Execute RPC method",
+        "input": [
+          { "@type": "PropertyValueSpecification", "valueRequired": true, "valueName": "method", "valuePattern": ".+" },
+          { "@type": "PropertyValueSpecification", "valueRequired": false, "valueName": "params", "valuePattern": "array" },
+          { "@type": "PropertyValueSpecification", "valueRequired": false, "valueName": "facilitator", "valuePattern": "(x402labs|payai|codenut)" }
+        ]
+      },
+      {
+        "@type": "CheckAction",
+        "target": {
+          "@type": "EntryPoint",
+          "httpMethod": "GET",
+          "urlTemplate": "https://x402labs.cloud/health"
+        },
+        "name": "Service health"
+      },
+      {
+        "@type": "CheckAction",
+        "target": {
+          "@type": "EntryPoint",
+          "httpMethod": "GET",
+          "urlTemplate": "https://x402labs.cloud/providers{?chain}"
+        },
+        "name": "List providers"
+      }
+    ]
+  }
+  </script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      line-height: 1.6;
+    }
+    
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Header */
+    header {
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #a78bfa;
+      text-decoration: none;
+    }
+    
+    nav {
+      display: flex;
+      gap: 2rem;
+    }
+    
+    nav a {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    nav a:hover {
+      color: #a78bfa;
+    }
+    
+    /* Layout */
+    .container {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      max-width: 1600px;
+      margin: 0 auto;
+      min-height: calc(100vh - 73px);
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      background: rgba(30, 41, 59, 0.3);
+      padding: 1.5rem 1rem;
+      border-right: 1px solid rgba(139, 92, 246, 0.1);
+      position: sticky;
+      top: 73px;
+      height: calc(100vh - 73px);
+      overflow-y: auto;
+    }
+    
+    .sidebar h3 {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.75rem;
+      margin-top: 1.5rem;
+      font-weight: 700;
+    }
+    
+    .sidebar h3:first-child {
+      margin-top: 0;
+    }
+    
+    .sidebar ul {
+      list-style: none;
+    }
+    
+    .sidebar li {
+      margin-bottom: 0.25rem;
+    }
+    
+    .sidebar a {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.85rem;
+      display: block;
+      padding: 0.375rem 0.5rem;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .sidebar a:hover,
+    .sidebar a.active {
+      background: rgba(139, 92, 246, 0.1);
+      color: #a78bfa;
+    }
+    
+    /* Content */
+    .content {
+      padding: 2rem 2.5rem;
+    }
+    
+    .section {
+      margin-bottom: 3rem;
+    }
+    
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #f1f5f9 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    h2 {
+      font-size: 1.75rem;
+      margin-top: 2.5rem;
+      margin-bottom: 1.25rem;
+      color: #e2e8f0;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+      padding-bottom: 0.5rem;
+    }
+    
+    h3 {
+      font-size: 1.25rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      color: #cbd5e1;
+    }
+    
+    h4 {
+      font-size: 1rem;
+      margin-top: 1rem;
+      margin-bottom: 0.75rem;
+      color: #cbd5e1;
+    }
+    
+    p {
+      color: #cbd5e1;
+      margin-bottom: 0.875rem;
+      max-width: 100%;
+      line-height: 1.6;
+    }
+    
+    /* Code Blocks */
+    pre {
+      background: #1e293b;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      position: relative;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    
+    pre::before {
+      content: attr(data-lang);
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    
+    code {
+      color: #10b981;
+      font-size: 0.9rem;
+    }
+    
+    /* Copy Button */
+    .code-copy-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.5rem 1rem;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: #a78bfa;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+    
+    .code-copy-btn:hover {
+      background: rgba(139, 92, 246, 0.3);
+      border-color: rgba(139, 92, 246, 0.5);
+      color: #c4b5fd;
+    }
+    
+    .code-copy-btn.copied {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border-color: #10b981;
+    }
+    
+    .inline-code {
+      background: rgba(139, 92, 246, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      color: #a78bfa;
+      font-size: 0.9em;
+    }
+    
+    /* API Endpoint Cards */
+    .endpoint-card {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.875rem;
+    }
+    
+    .method {
+      background: #10b981;
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+    
+    .method.post {
+      background: #3b82f6;
+    }
+    
+    .method.get {
+      background: #10b981;
+    }
+    
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      color: #a78bfa;
+      font-weight: 500;
+      font-size: 0.9rem;
+      overflow-wrap: break-word;
+    }
+    
+    .parameter-table {
+      width: 100%;
+      margin: 1rem 0;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    
+    .parameter-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      background: rgba(139, 92, 246, 0.1);
+      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    
+    .parameter-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+      color: #94a3b8;
+    }
+    
+    .parameter-name {
+      font-family: 'JetBrains Mono', monospace;
+      color: #a78bfa;
+    }
+    
+    .required {
+      background: #ef4444;
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    
+    .optional {
+      background: #64748b;
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    
+    /* Response Examples */
+    .response-tabs {
+      display: flex;
+      gap: 1rem;
+      margin: 1.5rem 0 0;
+    }
+    
+    .tab {
+      background: rgba(139, 92, 246, 0.1);
+      color: #cbd5e1;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem 0.5rem 0 0;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+    
+    .tab.active {
+      background: #1e293b;
+      color: #a78bfa;
+    }
+    
+    /* Status Badge */
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-left: 1rem;
+    }
+    
+    .status-badge.live {
+      background: #10b981;
+      color: white;
+    }
+    
+    .status-badge.beta {
+      background: #f59e0b;
+      color: white;
+    }
+    
+    /* Quick Links */
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.875rem;
+      margin: 1.5rem 0;
+    }
+    
+    .quick-link {
+      background: rgba(139, 92, 246, 0.1);
+      padding: 1.25rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.3s;
+    }
+    
+    .quick-link:hover {
+      transform: translateY(-2px);
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+    
+    .quick-link h4 {
+      color: #a78bfa;
+      margin-bottom: 0.375rem;
+      font-size: 1rem;
+    }
+    
+    .quick-link p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    
+    /* Facilitator Tabs */
+    .facilitator-tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      border-bottom: 2px solid rgba(139, 92, 246, 0.1);
+      padding-bottom: 0;
+    }
+    
+    .facilitator-tab {
+      padding: 0.75rem 1.25rem;
+      background: transparent;
+      border: 2px solid rgba(139, 92, 246, 0.2);
+      border-bottom: none;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+      border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
+    .facilitator-tab:hover {
+      background: rgba(139, 92, 246, 0.1);
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+    
+    .facilitator-tab.active {
+      background: #1e293b;
+      border-color: #a78bfa;
+      color: #a78bfa;
+    }
+    
+    .facilitator-tab.x402labs { border-left: 4px solid #10b981; }
+    .facilitator-tab.codenut { border-left: 4px solid #8b5cf6; }
+    .facilitator-tab.payai { border-left: 4px solid #3b82f6; }
+    
+    .facilitator-content {
+      display: none;
+    }
+    
+    .facilitator-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    /* FAQ Collapsible */
+    .faq-item {
+      border-top: 1px solid rgba(139, 92, 246, 0.1);
+      padding: 1.5rem 0;
+    }
+    
+    .faq-item:last-child {
+      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .faq-question {
+      cursor: pointer;
+      font-weight: 600;
+      color: #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      transition: color 0.2s;
+    }
+    
+    .faq-question:hover {
+      color: #a78bfa;
+    }
+    
+    .faq-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: rgba(139, 92, 246, 0.1);
+      border-radius: 50%;
+      transition: transform 0.3s, background 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .faq-question:hover .faq-toggle {
+      background: rgba(139, 92, 246, 0.2);
+    }
+    
+    .faq-item.open .faq-toggle {
+      transform: rotate(180deg);
+    }
+    
+    .faq-answer {
+      display: none;
+      margin-top: 1rem;
+      color: #94a3b8;
+      line-height: 1.8;
+    }
+    
+    .faq-item.open .faq-answer {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Back to Top Button */
+    .back-to-top {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 0.75rem 1rem;
+      background: #a78bfa;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 999;
+    }
+    
+    .back-to-top.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+    
+    .back-to-top:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+    }
+    
+    /* Facilitator Comparison Matrix */
+    .facilitator-matrix {
+      width: 100%;
+      margin: 2rem 0;
+      overflow-x: auto;
+    }
+    
+    .facilitator-comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 2rem 0;
+    }
+    
+    .facilitator-comparison-table th {
+      background: rgba(139, 92, 246, 0.15);
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: #cbd5e1;
+      border-bottom: 2px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .facilitator-comparison-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+      color: #94a3b8;
+    }
+    
+    .facilitator-badge {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
+    .badge-x402labs {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid #10b981;
+    }
+    
+    .badge-payai {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+      border: 1px solid #3b82f6;
+    }
+    
+    .badge-codenut {
+      background: rgba(139, 92, 246, 0.2);
+      color: #a78bfa;
+      border: 1px solid #a78bfa;
+    }
+    
+    /* Mobile Hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+    
+    .hamburger span {
+      width: 24px;
+      height: 2px;
+      background: #cbd5e1;
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+    
+    @media (max-width: 1200px) {
+      .container {
+        grid-template-columns: 200px 1fr;
+      }
+      
+      .content {
+        padding: 1.75rem 2rem;
+      }
+    }
+    
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        display: none;
+        position: fixed;
+        left: 0;
+        top: 73px;
+        width: 100%;
+        height: calc(100vh - 73px);
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(10px);
+        z-index: 99;
+        overflow-y: auto;
+        max-height: 60vh;
+      }
+      
+      .sidebar.open {
+        display: block;
+      }
+      
+      .hamburger {
+        display: flex;
+      }
+      
+      .content {
+        padding: 1.5rem;
+      }
+      
+      .back-to-top {
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+      }
+      
+      .facilitator-tabs {
+        flex-direction: column;
+        border-bottom: none;
+        border-left: 2px solid rgba(139, 92, 246, 0.2);
+      }
+      
+      .facilitator-tab {
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 0.375rem;
+        margin-bottom: 0.375rem;
+        padding: 0.625rem 1rem;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.875rem;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+      }
+      
+      .content {
+        padding: 1.25rem;
+      }
+      
+      pre {
+        padding: 1rem;
+        margin: 0.75rem 0;
+      }
+      
+      .quick-links {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .content {
+        padding: 1rem;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      h2 {
+        font-size: 1.25rem;
+        margin-top: 1.75rem;
+      }
+      
+      pre {
+        padding: 0.875rem;
+        font-size: 0.75rem;
+        margin: 0.5rem 0;
+      }
+      
+      .parameter-table {
+        font-size: 0.75rem;
+      }
+      
+      .endpoint-card {
+        padding: 1rem;
+        margin: 1rem 0;
+      }
+      
+      .facilitator-comparison-table th,
+      .facilitator-comparison-table td {
+        padding: 0.375rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <a href="/" class="logo">⚡ x402-RPC API Docs</a>
+      <button class="hamburger" id="hamburger-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/api-reference">API Reference</a>
+        <a href="/providers-ui">Providers</a>
+        <a href="/demo">Demo</a>
+        <a href="https://x.com/x402labs" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.3rem;">
+          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+        <a href="https://github.com/x402-labs" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <h3>Getting Started</h3>
+      <ul>
+        <li><a href="#introduction" class="active">Introduction</a></li>
+        <li><a href="#quick-start">Quick Start</a></li>
+        <li><a href="#authentication">Authentication</a></li>
+      </ul>
+      
+      <h3>Core API</h3>
+      <ul>
+        <li><a href="#rpc-endpoint">RPC Endpoint</a></li>
+        <li><a href="#x402-payment">x402-payment Header</a></li>
+        <li><a href="#health">Health Check</a></li>
+        <li><a href="#providers">Providers</a></li>
+        <li><a href="#facilitator-status">Facilitator Status</a></li>
+        <li><a href="#pricing">Pricing Oracle</a></li>
+        <li><a href="#batch-pricing">Batch Pricing API</a></li>
+        <li><a href="#rpc-methods-endpoint">RPC Methods</a></li>
+      </ul>
+      
+      <h3>Advanced</h3>
+      <ul>
+        <li><a href="#routing">Routing Strategies</a></li>
+        <li><a href="#facilitators">Facilitator Catalog</a></li>
+        <li><a href="#batch-payments">Batch Payments</a></li>
+        <li><a href="#error-handling">Error Handling</a></li>
+      </ul>
+      
+      <h3>SDKs</h3>
+      <ul>
+        <li><a href="#javascript">JavaScript</a></li>
+        <li><a href="#python">Python</a></li>
+        <li><a href="#curl">cURL</a></li>
+      </ul>
+      
+      <h3>Support</h3>
+      <ul>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Introduction -->
+      <section id="introduction" class="section">
+        <h1>API Reference</h1>
+        <p>
+          Complete documentation for integrating x402-RPC-Aggregator into your applications. 
+          This API provides intelligent RPC routing with built-in x402 micropayment support for Solana, Ethereum, and Base chains.
+        </p>
+        
+        <div class="quick-links">
+          <a href="#quick-start" class="quick-link">
+            <h4>🚀 Quick Start</h4>
+            <p>Get started in 5 minutes</p>
+          </a>
+          <a href="/demo" class="quick-link">
+            <h4>🎮 Live Demo</h4>
+            <p>Try it in your browser</p>
+          </a>
+          <a href="https://github.com/x402-labs/x402-rpc-aggregator" class="quick-link">
+            <h4>💻 GitHub</h4>
+            <p>View source code</p>
+          </a>
+        </div>
+
+        <h3 style="margin-top: 2.5rem; color: #cbd5e1;">Machine Endpoint Catalog</h3>
+        <p style="color: #94a3b8; max-width: 820px;">
+          Agents can parse the following manifest to discover available HTTP entry points, accepted facilitators, and content types.
+        </p>
+<pre><code>{
+  "api": "x402-rpc-aggregator",
+  "version": "2025-11-11",
+  "baseUrl": "https://x402labs.cloud",
+  "endpoints": [
+    {"method": "POST", "path": "/rpc", "requiresPayment": true, "headers": ["Content-Type", "x402-payment?", "x402-batch?"], "facilitators": ["auto", "x402labs", "payai", "codenut"]},
+    {"method": "GET", "path": "/health"},
+    {"method": "GET", "path": "/providers{?chain}"},
+    {"method": "GET", "path": "/providers/{providerId}"},
+    {"method": "GET", "path": "/facilitator"},
+    {"method": "GET", "path": "/pricing/sol-usd"},
+    {"method": "GET", "path": "/batch-pricing{?chain}"},
+    {"method": "GET", "path": "/rpc-methods{?chain,provider}"},
+    {"method": "POST", "path": "/solana-rpc", "notes": "Server-side proxy, requires backend context"}
+  ],
+  "paymentHeader": "x402-payment",
+  "batchHeader": "x402-batch"
+}</code></pre>
+      </section>
+
       <!-- Facilitator Status -->
       <section id="facilitator-status" class="section">
         <h2>Facilitator Status</h2>
@@ -152,547 +1089,6 @@
   "documentation": "https://docs.solana.com/api"
 }</code></pre>
         </div>
-      </section>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  
-  <!-- SEO Meta Tags -->
-  <title>API Reference | x402-RPC-Aggregator Documentation</title>
-  <meta name="description" content="Complete API reference for x402-RPC-Aggregator. Learn how to integrate intelligent RPC routing with x402 micropayments in your AI agents and dApps." />
-  <meta name="keywords" content="x402 API, RPC API, Solana API, Ethereum API, blockchain API, micropayments API" />
-  
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebAPI",
-    "name": "x402-RPC Aggregator API",
-    "description": "Pay-per-call blockchain RPC with x402 micropayment settlement supporting Solana, Ethereum, and Base.",
-    "documentation": "https://x402labs.cloud/api-reference",
-    "provider": {
-      "@type": "Organization",
-      "name": "x402 Labs",
-      "url": "https://x402labs.cloud"
-    },
-    "endpointUrl": "https://x402labs.cloud/rpc",
-    "termsOfService": "https://x402labs.cloud/terms",
-    "servesNetwork": [
-      "https://solana.com/mainnet",
-      "https://ethereum.org/en/developers/docs/networks/",
-      "https://base.org/"
-    ],
-    "potentialAction": [
-      {
-        "@type": "ConsumeAction",
-        "target": {
-          "@type": "EntryPoint",
-          "httpMethod": "POST",
-          "urlTemplate": "https://x402labs.cloud/rpc"
-        },
-        "name": "Execute RPC method",
-        "input": [
-          { "@type": "PropertyValueSpecification", "valueRequired": true, "valueName": "method", "valuePattern": ".+" },
-          { "@type": "PropertyValueSpecification", "valueRequired": false, "valueName": "params", "valuePattern": "array" },
-          { "@type": "PropertyValueSpecification", "valueRequired": false, "valueName": "facilitator", "valuePattern": "(x402labs|payai|codenut)" }
-        ]
-      },
-      {
-        "@type": "CheckAction",
-        "target": {
-          "@type": "EntryPoint",
-          "httpMethod": "GET",
-          "urlTemplate": "https://x402labs.cloud/health"
-        },
-        "name": "Service health"
-      },
-      {
-        "@type": "CheckAction",
-        "target": {
-          "@type": "EntryPoint",
-          "httpMethod": "GET",
-          "urlTemplate": "https://x402labs.cloud/providers{?chain}"
-        },
-        "name": "List providers"
-      }
-    ]
-  }
-  </script>
-  
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #0f172a;
-      color: #f1f5f9;
-      line-height: 1.6;
-    }
-    
-    code, pre {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    
-    /* Header */
-    header {
-      background: rgba(30, 41, 59, 0.5);
-      backdrop-filter: blur(10px);
-      padding: 1rem 2rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
-    }
-    
-    .header-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .logo {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #a78bfa;
-      text-decoration: none;
-    }
-    
-    nav {
-      display: flex;
-      gap: 2rem;
-    }
-    
-    nav a {
-      color: #cbd5e1;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    
-    nav a:hover {
-      color: #a78bfa;
-    }
-    
-    /* Layout */
-    .container {
-      display: grid;
-      grid-template-columns: 250px 1fr;
-      max-width: 1400px;
-      margin: 0 auto;
-      min-height: calc(100vh - 73px);
-    }
-    
-    /* Sidebar */
-    .sidebar {
-      background: rgba(30, 41, 59, 0.3);
-      padding: 2rem 1.5rem;
-      border-right: 1px solid rgba(139, 92, 246, 0.1);
-      position: sticky;
-      top: 73px;
-      height: calc(100vh - 73px);
-      overflow-y: auto;
-    }
-    
-    .sidebar h3 {
-      font-size: 0.875rem;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 1rem;
-      margin-top: 2rem;
-    }
-    
-    .sidebar h3:first-child {
-      margin-top: 0;
-    }
-    
-    .sidebar ul {
-      list-style: none;
-    }
-    
-    .sidebar li {
-      margin-bottom: 0.5rem;
-    }
-    
-    .sidebar a {
-      color: #cbd5e1;
-      text-decoration: none;
-      font-size: 0.9rem;
-      display: block;
-      padding: 0.5rem;
-      border-radius: 0.375rem;
-      transition: all 0.2s;
-    }
-    
-    .sidebar a:hover,
-    .sidebar a.active {
-      background: rgba(139, 92, 246, 0.1);
-      color: #a78bfa;
-    }
-    
-    /* Content */
-    .content {
-      padding: 3rem;
-    }
-    
-    .section {
-      margin-bottom: 4rem;
-    }
-    
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-      background: linear-gradient(135deg, #f1f5f9 0%, #a78bfa 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    
-    h2 {
-      font-size: 2rem;
-      margin-top: 3rem;
-      margin-bottom: 1.5rem;
-      color: #e2e8f0;
-      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-      padding-bottom: 0.5rem;
-    }
-    
-    h3 {
-      font-size: 1.5rem;
-      margin-top: 2rem;
-      margin-bottom: 1rem;
-      color: #cbd5e1;
-    }
-    
-    p {
-      color: #cbd5e1;
-      margin-bottom: 1rem;
-      max-width: 800px;
-    }
-    
-    /* Code Blocks */
-    pre {
-      background: #1e293b;
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      overflow-x: auto;
-      margin: 1.5rem 0;
-      border: 1px solid rgba(139, 92, 246, 0.2);
-    }
-    
-    code {
-      color: #10b981;
-      font-size: 0.9rem;
-    }
-    
-    .inline-code {
-      background: rgba(139, 92, 246, 0.1);
-      padding: 0.2rem 0.5rem;
-      border-radius: 0.25rem;
-      color: #a78bfa;
-      font-size: 0.9em;
-    }
-    
-    /* API Endpoint Cards */
-    .endpoint-card {
-      background: rgba(30, 41, 59, 0.5);
-      border-radius: 1rem;
-      padding: 2rem;
-      margin: 2rem 0;
-      border: 1px solid rgba(139, 92, 246, 0.2);
-    }
-    
-    .endpoint-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    
-    .method {
-      background: #10b981;
-      color: white;
-      padding: 0.25rem 0.75rem;
-      border-radius: 0.375rem;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    
-    .method.post {
-      background: #3b82f6;
-    }
-    
-    .method.get {
-      background: #10b981;
-    }
-    
-    .endpoint-path {
-      font-family: 'JetBrains Mono', monospace;
-      color: #a78bfa;
-      font-weight: 500;
-    }
-    
-    .parameter-table {
-      width: 100%;
-      margin: 1.5rem 0;
-      border-collapse: collapse;
-    }
-    
-    .parameter-table th {
-      text-align: left;
-      padding: 0.75rem;
-      background: rgba(139, 92, 246, 0.1);
-      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-      font-size: 0.875rem;
-      color: #cbd5e1;
-    }
-    
-    .parameter-table td {
-      padding: 0.75rem;
-      border-bottom: 1px solid rgba(139, 92, 246, 0.1);
-      color: #94a3b8;
-    }
-    
-    .parameter-name {
-      font-family: 'JetBrains Mono', monospace;
-      color: #a78bfa;
-    }
-    
-    .required {
-      background: #ef4444;
-      color: white;
-      padding: 0.125rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin-left: 0.5rem;
-    }
-    
-    .optional {
-      background: #64748b;
-      color: white;
-      padding: 0.125rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin-left: 0.5rem;
-    }
-    
-    /* Response Examples */
-    .response-tabs {
-      display: flex;
-      gap: 1rem;
-      margin: 1.5rem 0 0;
-    }
-    
-    .tab {
-      background: rgba(139, 92, 246, 0.1);
-      color: #cbd5e1;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem 0.5rem 0 0;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 0.875rem;
-    }
-    
-    .tab.active {
-      background: #1e293b;
-      color: #a78bfa;
-    }
-    
-    /* Status Badge */
-    .status-badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 0.375rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-      margin-left: 1rem;
-    }
-    
-    .status-badge.live {
-      background: #10b981;
-      color: white;
-    }
-    
-    .status-badge.beta {
-      background: #f59e0b;
-      color: white;
-    }
-    
-    /* Quick Links */
-    .quick-links {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
-      margin: 2rem 0;
-    }
-    
-    .quick-link {
-      background: rgba(139, 92, 246, 0.1);
-      padding: 1.5rem;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(139, 92, 246, 0.2);
-      text-decoration: none;
-      color: inherit;
-      transition: all 0.3s;
-    }
-    
-    .quick-link:hover {
-      transform: translateY(-3px);
-      border-color: rgba(139, 92, 246, 0.4);
-    }
-    
-    .quick-link h4 {
-      color: #a78bfa;
-      margin-bottom: 0.5rem;
-    }
-    
-    .quick-link p {
-      font-size: 0.875rem;
-      color: #94a3b8;
-    }
-    
-    @media (max-width: 1024px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
-      
-      .sidebar {
-        display: none;
-      }
-    }
-  </style>
-</head>
-<body>
-  <!-- Header -->
-  <header>
-    <div class="header-content">
-      <a href="/" class="logo">⚡ x402-RPC API Docs</a>
-      <nav>
-        <a href="/">Home</a>
-        <a href="/api-docs">API Docs</a>
-        <a href="/api-reference">API Reference</a>
-        <a href="/providers-ui">Providers</a>
-        <a href="/demo">Demo</a>
-        <a href="https://x.com/x402labs" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.3rem;">
-          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-          </svg>
-        </a>
-        <a href="https://github.com/x402-labs" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
-        </a>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Main Container -->
-  <div class="container">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <h3>Getting Started</h3>
-      <ul>
-        <li><a href="#introduction" class="active">Introduction</a></li>
-        <li><a href="#quick-start">Quick Start</a></li>
-        <li><a href="#authentication">Authentication</a></li>
-      </ul>
-      
-      <h3>Core API</h3>
-      <ul>
-        <li><a href="#rpc-endpoint">RPC Endpoint</a></li>
-        <li><a href="#x402-payment">x402-payment Header</a></li>
-        <li><a href="#health">Health Check</a></li>
-        <li><a href="#providers">Providers</a></li>
-        <li><a href="#facilitator-status">Facilitator Status</a></li>
-        <li><a href="#pricing">Pricing Oracle</a></li>
-        <li><a href="#batch-pricing">Batch Pricing API</a></li>
-        <li><a href="#rpc-methods-endpoint">RPC Methods</a></li>
-      </ul>
-      
-      <h3>Advanced</h3>
-      <ul>
-        <li><a href="#routing">Routing Strategies</a></li>
-        <li><a href="#facilitators">Facilitator Catalog</a></li>
-        <li><a href="#batch-payments">Batch Payments</a></li>
-        <li><a href="#solana-proxy">Solana Proxy</a></li>
-        <li><a href="#error-handling">Error Handling</a></li>
-      </ul>
-      
-      <h3>SDKs</h3>
-      <ul>
-        <li><a href="#javascript">JavaScript</a></li>
-        <li><a href="#python">Python</a></li>
-        <li><a href="#curl">cURL</a></li>
-      </ul>
-      
-      <h3>Support</h3>
-      <ul>
-        <li><a href="#faq">FAQ</a></li>
-      </ul>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="content">
-      <!-- Introduction -->
-      <section id="introduction" class="section">
-        <h1>API Reference</h1>
-        <p>
-          Complete documentation for integrating x402-RPC-Aggregator into your applications. 
-          This API provides intelligent RPC routing with built-in x402 micropayment support for Solana, Ethereum, and Base chains.
-        </p>
-        
-        <div class="quick-links">
-          <a href="#quick-start" class="quick-link">
-            <h4>🚀 Quick Start</h4>
-            <p>Get started in 5 minutes</p>
-          </a>
-          <a href="/demo" class="quick-link">
-            <h4>🎮 Live Demo</h4>
-            <p>Try it in your browser</p>
-          </a>
-          <a href="/api-docs" class="quick-link">
-            <h4>📊 Swagger UI</h4>
-            <p>Interactive API explorer</p>
-          </a>
-          <a href="https://github.com/x402-labs/x402-rpc-aggregator" class="quick-link">
-            <h4>💻 GitHub</h4>
-            <p>View source code</p>
-          </a>
-        </div>
-
-        <h3 style="margin-top: 2.5rem; color: #cbd5e1;">Machine Endpoint Catalog</h3>
-        <p style="color: #94a3b8; max-width: 820px;">
-          Agents can parse the following manifest to discover available HTTP entry points, accepted facilitators, and content types.
-        </p>
-<pre><code>{
-  "api": "x402-rpc-aggregator",
-  "version": "2025-11-11",
-  "baseUrl": "https://x402labs.cloud",
-  "endpoints": [
-    {"method": "POST", "path": "/rpc", "requiresPayment": true, "headers": ["Content-Type", "x402-payment?", "x402-batch?"], "facilitators": ["auto", "x402labs", "payai", "codenut"]},
-    {"method": "GET", "path": "/health"},
-    {"method": "GET", "path": "/providers{?chain}"},
-    {"method": "GET", "path": "/providers/{providerId}"},
-    {"method": "GET", "path": "/facilitator"},
-    {"method": "GET", "path": "/pricing/sol-usd"},
-    {"method": "GET", "path": "/batch-pricing{?chain}"},
-    {"method": "GET", "path": "/rpc-methods{?chain,provider}"},
-    {"method": "POST", "path": "/solana-rpc", "notes": "Server-side proxy, requires backend context"}
-  ],
-  "paymentHeader": "x402-payment",
-  "batchHeader": "x402-batch"
-}</code></pre>
       </section>
 
       <!-- Quick Start -->
@@ -932,9 +1328,26 @@ Value: JSON string
 }</code></pre>
         </div>
 
-        <h3>x402labs Facilitator · SOL (Self-Hosted)</h3>
-        <div class="endpoint-card">
-          <p style="color: #cbd5e1; margin-bottom: 1rem;">Send a signed SOL transfer (rent-exempt minimum 890,880 lamports). The field <span class="inline-code">txBase64</span> is a legacy name and MUST contain a base58-encoded transaction.</p>
+        <h3>Facilitator Payment Specifications</h3>
+        <p style="color: #cbd5e1; margin-bottom: 1rem;">Click on a facilitator tab to view its payment structure and requirements:</p>
+        
+        <div class="facilitator-tabs">
+          <button class="facilitator-tab x402labs active" data-facilitator="x402labs">
+            <span class="facilitator-badge badge-x402labs">x402labs</span> SOL
+          </button>
+          <button class="facilitator-tab codenut" data-facilitator="codenut">
+            <span class="facilitator-badge badge-codenut">CodeNut Pay</span> USDC
+          </button>
+          <button class="facilitator-tab payai" data-facilitator="payai">
+            <span class="facilitator-badge badge-payai">PayAI Network</span> USDC
+          </button>
+        </div>
+
+        <!-- x402labs Content -->
+        <div class="facilitator-content x402labs active" data-facilitator="x402labs">
+          <div class="endpoint-card">
+            <h4 style="color: #10b981; margin-bottom: 1rem;">🟢 x402labs Facilitator · SOL (Self-Hosted)</h4>
+            <p style="color: #cbd5e1; margin-bottom: 1rem;">Send a signed SOL transfer (rent-exempt minimum 890,880 lamports). The field <span class="inline-code">txBase64</span> is a legacy name and MUST contain a base58-encoded transaction.</p>
 <pre><code>{
   "paymentPayload": {
     "facilitator": "x402labs",
@@ -952,18 +1365,21 @@ Value: JSON string
     "resource": "https://x402labs.cloud/rpc"
   }
 }</code></pre>
-          <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">Intent message (sign exactly this JSON string):</p>
+            <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">Intent message (sign exactly this JSON string):</p>
 <pre><code>{
   "amount": 890880,
   "to": "3HBV2F9C25k8169rKv6FDqQaFHj52NYH5JJjFYDoSnAZ",
   "nonce": "1762898224761-0.11427330977237005",
   "resource": "https://x402labs.cloud/rpc"
 }</code></pre>
+          </div>
         </div>
 
-        <h3>CodeNut Pay · USDC on Solana</h3>
+        <!-- CodeNut Content -->
+        <div class="facilitator-content codenut" data-facilitator="codenut">
         <div class="endpoint-card">
-          <p style="color: #cbd5e1; margin-bottom: 1rem;">Provide a partially signed USDC transfer where the facilitator co-signs. Transaction MUST be base64 encoded and include compute budget instructions first.</p>
+            <h4 style="color: #a78bfa; margin-bottom: 1rem;">🟣 CodeNut Pay · USDC on Solana/Base</h4>
+            <p style="color: #cbd5e1; margin-bottom: 1rem;">Provide a partially signed USDC transfer where the facilitator co-signs. Transaction MUST be base64 encoded and include compute budget instructions first.</p>
 <pre><code>{
   "paymentPayload": {
     "x402Version": 1,
@@ -988,18 +1404,21 @@ Value: JSON string
     }
   }
 }</code></pre>
-          <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">Instruction order inside <span class="inline-code">payload.transaction</span>:</p>
-          <ul style="list-style-type: decimal; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li><span class="inline-code">ComputeBudget.limit</span> (40,000 units recommended)</li>
-            <li><span class="inline-code">ComputeBudget.price</span> (≥1 micro-lamport)</li>
-            <li><span class="inline-code">TransferChecked</span> for USDC (facilitator ATA must already exist)</li>
-            <li>Optional: <span class="inline-code">CreateAssociatedTokenAccount</span> if facilitator indicated ATA creation is allowed</li>
-          </ul>
+            <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">Instruction order inside <span class="inline-code">payload.transaction</span>:</p>
+            <ul style="list-style-type: decimal; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+              <li><span class="inline-code">ComputeBudget.limit</span> (40,000 units recommended)</li>
+              <li><span class="inline-code">ComputeBudget.price</span> (≥1 micro-lamport)</li>
+              <li><span class="inline-code">TransferChecked</span> for USDC (facilitator ATA must already exist)</li>
+              <li>Optional: <span class="inline-code">CreateAssociatedTokenAccount</span> if facilitator indicated ATA creation is allowed</li>
+            </ul>
+          </div>
         </div>
 
-        <h3>PayAI Network · USDC on Solana</h3>
-        <div class="endpoint-card">
-          <p style="color: #cbd5e1; margin-bottom: 1rem;">Use PayAI's <a href="https://github.com/PayAINetwork/x402-solana" style="color: #a78bfa;">x402-solana SDK v0.1.4</a> to build the payment. The facilitator URL signs and broadcasts.</p>
+        <!-- PayAI Content -->
+        <div class="facilitator-content payai" data-facilitator="payai">
+          <div class="endpoint-card">
+            <h4 style="color: #3b82f6; margin-bottom: 1rem;">🔵 PayAI Network · USDC on Solana</h4>
+            <p style="color: #cbd5e1; margin-bottom: 1rem;">Use PayAI's <a href="https://github.com/PayAINetwork/x402-solana" style="color: #a78bfa;">x402-solana SDK v0.1.4</a> to build the payment. The facilitator URL signs and broadcasts.</p>
 <pre><code>{
   "paymentPayload": {
     "x402Version": 1,
@@ -1023,13 +1442,14 @@ Value: JSON string
     }
   }
 }</code></pre>
-          <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">PayAI requirements:</p>
-          <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
-            <li>Instruction 0: <span class="inline-code">ComputeBudget.limit(40000)</span></li>
-            <li>Instruction 1: <span class="inline-code">ComputeBudget.price(1)</span></li>
-            <li>Instruction 2: <span class="inline-code">TransferChecked</span> (no inline ATA creation)</li>
-            <li>Serialize with <span class="inline-code">requireAllSignatures=false</span>; facilitator adds fee-payer signature</li>
-          </ul>
+            <p style="color: #a78bfa; font-size: 0.875rem; margin-top: 1rem;">PayAI requirements:</p>
+            <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
+              <li>Instruction 0: <span class="inline-code">ComputeBudget.limit(40000)</span></li>
+              <li>Instruction 1: <span class="inline-code">ComputeBudget.price(1)</span></li>
+              <li>Instruction 2: <span class="inline-code">TransferChecked</span> (no inline ATA creation)</li>
+              <li>Serialize with <span class="inline-code">requireAllSignatures=false</span>; facilitator adds fee-payer signature</li>
+            </ul>
+          </div>
         </div>
 
         <h3>Amount Units Reference</h3>
@@ -1125,7 +1545,7 @@ const response = await fetch('https://x402labs.cloud/rpc', {
           
           <p>Check service health and provider status.</p>
           
-<pre><code>curl https://x402labs.cloud//health</code></pre>
+<pre><code>curl https://x402labs.cloud/health</code></pre>
 
           <h3>Response</h3>
 <pre><code>{
@@ -1173,7 +1593,7 @@ const response = await fetch('https://x402labs.cloud/rpc', {
             </tbody>
           </table>
           
-<pre><code>curl 'https://x402labs.cloud//providers?chain=solana'</code></pre>
+<pre><code>curl 'https://x402labs.cloud/providers?chain=solana'</code></pre>
 
           <h3>Response</h3>
 <pre><code>{
@@ -1359,39 +1779,6 @@ const response = await fetch('https://x402labs.cloud/rpc', {
         <p style="color:#94a3b8;">Remaining call credits and expiration are returned in the normal 200 response.</p>
       </section>
 
-      <!-- Solana Proxy -->
-      <section id="solana-proxy" class="section">
-        <h2>Solana RPC Proxy (Server-to-Server)</h2>
-        <p style="color:#cbd5e1;">The aggregator exposes a secure proxy to Helius for internal use. This endpoint requires backend coordination (no wallet signing) and should only be called from trusted infrastructure.</p>
-        <div class="endpoint-card">
-          <div class="endpoint-header">
-            <span class="method post">POST</span>
-            <span class="endpoint-path">/solana-rpc</span>
-          </div>
-          <p style="color:#cbd5e1;">Use the same JSON-RPC payload you would send to Solana mainnet. Authentication is handled by the aggregator.</p>
-<pre><code>curl -X POST https://x402labs.cloud/solana-rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "getLatestBlockhash",
-    "params": [{"commitment": "confirmed"}]
-  }'</code></pre>
-<pre><code>{
-  "jsonrpc": "2.0",
-  "result": {
-    "context": { "slot": 379462953 },
-    "value": {
-      "blockhash": "5xUgf...R9zA",
-      "lastValidBlockHeight": 310551215
-    }
-  },
-  "id": 1
-}</code></pre>
-          <p style="color:#94a3b8;">This proxy powers the browser demo and SDK helpers. For public integrations use <span class="inline-code">/rpc</span> with x402 payments instead.</p>
-        </div>
-      </section>
-
       <!-- Error Handling -->
       <section id="error-handling" class="section">
         <h2>Error Handling</h2>
@@ -1522,11 +1909,15 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
       <!-- FAQ Section -->
       <section id="faq" class="section">
         <h2>Frequently Asked Questions (FAQ)</h2>
+        <p style="color: #cbd5e1; margin-bottom: 2rem;">Click on any question to expand the answer. Common questions are listed first.</p>
 
         <div class="endpoint-card">
-          <h3 style="color: #a78bfa; margin-bottom: 1rem;">Payment & Facilitators</h3>
-          
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Why am I getting "Payment verification failed" with SOL payments?</h4>
+          <div class="faq-item open">
+            <div class="faq-question">
+              <span>Q: Why am I getting "Payment verification failed" with SOL payments?</span>
+              <span class="faq-toggle">⌄</span>
+            </div>
+            <div class="faq-answer">
           <p style="color: #94a3b8; margin-bottom: 1rem;">
             <strong>A:</strong> You must specify <span class="inline-code">"facilitator": "x402labs"</span> in your request body for SOL payments. 
             Without this, the system defaults to PayAI Network, which expects USDC payments and will fail when receiving SOL.
@@ -1538,8 +1929,15 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
   "chain": "solana",
   "facilitator": "x402labs"  // ← Required for SOL payments!
 }</code></pre>
+            </div>
+          </div>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What's the difference between x402labs and PayAI facilitators?</h4>
+          <div class="faq-item">
+            <div class="faq-question">
+              <span>Q: What's the difference between x402labs and PayAI facilitators?</span>
+              <span class="faq-toggle">⌄</span>
+            </div>
+            <div class="faq-answer">
           <p style="color: #94a3b8; margin-bottom: 1rem;">
             <strong>A:</strong> They use different payment tokens:
           </p>
@@ -1615,21 +2013,6 @@ print(f"Tx: {result['x402']['paymentInfo']['txHash']}")</code></pre>
         <div class="endpoint-card" style="margin-top: 2rem;">
           <h3 style="color: #a78bfa; margin-bottom: 1rem;">Technical Implementation</h3>
 
-          <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: What message should I sign for the payment intent?</h4>
-          <p style="color: #94a3b8; margin-bottom: 1rem;">
-            <strong>A:</strong> Sign this exact JSON structure:
-          </p>
-<pre><code>{
-  "amount": 749,  // From 402 response maxAmountRequired
-  "to": "26AvBMEXaJAfA2R7wtQiPNYeWUd8QSi6rvy5i5W78vNR",  // payTo address
-  "nonce": "1762303412466-0.7514463157105271",  // From 402 response extra.nonce
-  "resource": "/rpc"
-}
-
-// Then:
-const messageBytes = new TextEncoder().encode(JSON.stringify(intentMessage));
-const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
-const signatureBase58 = bs58.encode(signature);</code></pre>
 
           <h4 style="color: #cbd5e1; margin-top: 1.5rem;">Q: Is payment verification synchronous or asynchronous?</h4>
           <p style="color: #94a3b8; margin-bottom: 1rem;">
@@ -1771,8 +2154,8 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
           </p>
           <ul style="list-style-type: disc; padding-left: 1.5rem; color: #e2e8f0; line-height: 1.8;">
             <li><strong>Email:</strong> <a href="mailto:operations@x402labs.cloud" style="color: #a78bfa;">operations@x402labs.cloud</a></li>
-            <li><strong>Documentation:</strong> <a href="/api-docs" style="color: #a78bfa;">Swagger UI</a> for interactive API explorer</li>
             <li><strong>Examples:</strong> <a href="/demo" style="color: #a78bfa;">Live Demo</a> with working code examples</li>
+            <li><strong>Documentation:</strong> <a href="/api-reference" style="color: #a78bfa;">API Reference</a> for complete integration guide</li>
             <li><strong>GitHub:</strong> <a href="https://github.com/x402-labs" target="_blank" style="color: #a78bfa;">Issues and Discussions</a></li>
             <li><strong>Twitter:</strong> <a href="https://x.com/x402labs" target="_blank" style="color: #a78bfa;">@x402labs</a></li>
           </ul>
@@ -1794,6 +2177,111 @@ const signatureBase58 = bs58.encode(signature);</code></pre>
 
   <!-- Real-Time Pricing Widget -->
   <script src="/shared-pricing-widget.js"></script>
+
+  <script>
+    // Facilitator Tabs
+    document.querySelectorAll('.facilitator-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const facilitator = tab.dataset.facilitator;
+        
+        // Remove active class from all tabs and contents
+        document.querySelectorAll('.facilitator-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.facilitator-content').forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab and corresponding content
+        tab.classList.add('active');
+        document.querySelectorAll(`.facilitator-content[data-facilitator="${facilitator}"]`).forEach(c => {
+          c.classList.add('active');
+        });
+      });
+    });
+
+    // FAQ Collapsible
+    document.querySelectorAll('.faq-question').forEach(question => {
+      question.addEventListener('click', () => {
+        const item = question.closest('.faq-item');
+        item.classList.toggle('open');
+      });
+    });
+
+    // Back to Top Button
+    const backToTopBtn = document.createElement('button');
+    backToTopBtn.className = 'back-to-top';
+    backToTopBtn.innerHTML = '↑ Top';
+    document.body.appendChild(backToTopBtn);
+
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        backToTopBtn.classList.add('visible');
+      } else {
+        backToTopBtn.classList.remove('visible');
+      }
+    });
+
+    backToTopBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Copy Button for Code Blocks
+    document.querySelectorAll('pre').forEach((pre, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'code-copy-btn';
+      btn.textContent = '📋 Copy';
+      btn.style.top = '1rem';
+      btn.style.right = '1rem';
+      
+      btn.addEventListener('click', () => {
+        const code = pre.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = '✓ Copied';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.textContent = '📋 Copy';
+            btn.classList.remove('copied');
+          }, 2000);
+        });
+      });
+      
+      pre.style.position = 'relative';
+      pre.appendChild(btn);
+    });
+
+    // Hamburger Menu
+    const hamburger = document.getElementById('hamburger-menu');
+    const sidebar = document.querySelector('.sidebar');
+    
+    hamburger?.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+
+    // Close sidebar when clicking a link
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+      });
+    });
+
+    // Update active link in sidebar
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('section');
+      const navLinks = document.querySelectorAll('.sidebar a');
+      
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (scrollY >= sectionTop - 200) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href').slice(1) === current) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
 </body>
 </html>
 
