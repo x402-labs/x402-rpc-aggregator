@@ -96,14 +96,13 @@ export class PayAISdkFacilitator {
       }
 
       // CRITICAL: Normalize requirements for PayAI facilitator
+      // Only include fields that PayAI SDK expects, avoid custom fields
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
         resource: paymentRequirements.resource || '',
         description: paymentRequirements.description || 'Payment via x402',
-        mimeType: paymentRequirements.mimeType || 'application/json',
-        maxTimeoutSeconds: paymentRequirements.maxTimeoutSeconds || 300,
         extra: paymentRequirements.extra || {},
         // CRITICAL: Normalize asset to OBJECT (facilitator expects { address: string })
         asset: {
@@ -112,6 +111,9 @@ export class PayAISdkFacilitator {
             : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
         },
       };
+      
+      // NOTE: Do NOT add mimeType or maxTimeoutSeconds - these aren't part of ExactSvmPayloadSchema
+      // Only include fields that are actually used by the facilitator
 
       // CRITICAL: Handle amount field based on scheme and what client sent
       if ('maxAmountRequired' in paymentRequirements) {
@@ -148,9 +150,19 @@ export class PayAISdkFacilitator {
       console.log(`📤 Calling this.handler.verifyPayment()...`);
       console.log(`   Handler type:`, typeof this.handler);
       console.log(`   Handler.verifyPayment type:`, typeof this.handler.verifyPayment);
+      console.log(`   Payment header format: base64-encoded JSON of full x402 payload`);
+      console.log(`   Header length: ${paymentHeader.length} chars`);
+      
+      // Log what's being sent to the handler
+      try {
+        const headerDecoded = Buffer.from(paymentHeader, 'base64').toString('utf-8');
+        console.log(`   Decoded header (first 200 chars): ${headerDecoded.substring(0, 200)}...`);
+      } catch (e) {
+        console.log(`   Could not decode header`);
+      }
       
       const result = await this.handler.verifyPayment(paymentHeader, sdkRequirements);
-        console.log(`   PayAI SDK result type:`, typeof result);
+      console.log(`   PayAI SDK result type:`, typeof result);
       console.log(`   PayAI SDK raw result:`, JSON.stringify(result, null, 2));
 
       // Some versions wrap the facilitator response under a `data` field
