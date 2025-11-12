@@ -2,7 +2,7 @@
 
 **Pay-per-call RPC access for AI agents — no API keys, no subscriptions.**
 
-A production-ready RPC aggregator that intelligently routes blockchain RPC calls across multiple providers with built-in x402 micropayment support for Solana, Ethereum, and Base chains.
+A RPC aggregator that intelligently routes blockchain RPC calls across multiple providers with built-in x402 micropayment support for Solana, Ethereum, and Base chains.
 
 ## 🌟 Features
 
@@ -11,7 +11,7 @@ A production-ready RPC aggregator that intelligently routes blockchain RPC calls
 | **Multi-provider routing** | ✅ Done | Triton, Helius, QuickNode, Alchemy, Infura |
 | **x402 micropayments** | ✅ Done | USDC on Solana & Base (official PayAI SDK) |
 | **x402scan compliant** | ✅ Done | Compatible with [x402scan.com](https://www.x402scan.com/resources/register) |
-| **Dual facilitators** | ✅ Done | X-Labs OR PayAI Network (choose freely) |
+| **Triple facilitators** | ✅ Done | CodeNut (USDC) OR x402labs (SOL) OR PayAI (USDC) - choose freely |
 | **Intelligent routing** | ✅ Done | Cost, latency, priority, round-robin strategies |
 | **AI agent compatible** | ✅ Done | No login, autonomous payments |
 | **Batch payments** | ✅ Done | $0.08-0.15 for 1K calls (volume discounts) |
@@ -20,7 +20,7 @@ A production-ready RPC aggregator that intelligently routes blockchain RPC calls
 | **SVM & EVM support** | ✅ Done | Solana + Ethereum/Base |
 | **Auto fallback** | ✅ Done | Automatic failover between facilitators |
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 [AI Agent / dApp]
@@ -34,7 +34,7 @@ A production-ready RPC aggregator that intelligently routes blockchain RPC calls
 [Returns data + Receipt + On-chain Proof]
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -58,39 +58,18 @@ cp .env.example .env
 # Edit .env with your private keys and wallet addresses
 ```
 
-### Environment Variables
-
-```bash
-# Facilitator Configuration (Choose One)
-X402_FACILITATOR_TYPE=auto  # Options: payai | xlab | auto (recommended)
-X402_WALLET=your_receiving_wallet_address
-
-# For X-Labs or Auto mode
-SOLANA_PRIVATE_KEY=your_base58_solana_private_key
-EVM_PRIVATE_KEY=0xyour_evm_private_key
-
-# For PayAI or Auto mode (default URL provided)
-PAYAI_FACILITATOR_URL=https://facilitator.payai.network
-
-# Fallback Options
-X402_ENABLE_FALLBACK=true
-X402_FALLBACK_TYPE=payai
-
-# RPC Provider URLs (optional - defaults to public endpoints)
-TRITON_RPC_URL=https://your-triton-url
-HELIUS_RPC_URL=https://your-helius-url
-QUICKNODE_SOLANA_URL=https://your-quicknode-solana-url
 
 # Server
 PORT=3000
 ```
 
 **Facilitator Options**:
-- **`payai`**: Use [PayAI Network](https://payai.network) facilitator (zero fees, <1s settlement)
-- **`xlab`**: Use X-Labs solana network facilitator (full control)
-- **`auto`**: Try X-Labs first, fallback to PayAI (recommended for production)
+- **`codenut`**: Use [CodeNut Pay](https://codenut.ai/x402) facilitator (USDC on Solana/Base, zero-config, fast settlement) ⭐ **New!**
+- **`payai`**: Use [PayAI Network](https://payai.network) facilitator (USDC, zero network fees, <1s settlement)
+- **`x402labs`**: Use x402labs self-hosted facilitator (SOL, full control)
+- **`auto`**: Try x402labs first, then CodeNut, then PayAI (recommended for production)
 
-See [FACILITATOR_GUIDE.md](./FACILITATOR_GUIDE.md) for detailed comparison.
+
 
 ### Build & Run
 
@@ -136,19 +115,35 @@ Content-Type: application/json
 
 ```json
 {
-  "invoice": {
-    "amount": 0.0001,
-    "to": "FacilitatorWalletAddress",
-    "network": "solana-mainnet",
-    "resource": "/rpc",
-    "nonce": "1234567890-abc",
-    "provider": "Triton One",
-    "batchOption": {
-      "calls": 1000,
-      "price": 0.08,
-      "savings": "20%"
+  "x402Version": 1,
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "solana",
+      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "maxAmountRequired": "150",
+      "payTo": "wallet_address",
+      "resource": "https://x402labs.cloud/rpc",
+      "description": "RPC access via Helius for solana",
+      "mimeType": "application/json",
+      "extra": {
+        "provider": "Helius",
+        "providerId": "helius-solana",
+        "nonce": "1762898224761-0.11427330977237005",
+        "facilitator": {
+          "primary": "x402labs",
+          "type": "x402labs",
+          "fallback": "CodeNut Pay"
+        },
+        "feePayer": "HsozMJWWHNADoZRmhDGKzua6XW6NNfNDdQ4CkE9i5wHt",
+        "batchOption": {
+          "calls": 1000,
+          "price": 0.12,
+          "savings": "20.0%"
+        }
+      }
     }
-  }
+  ]
 }
 ```
 
@@ -157,7 +152,7 @@ Content-Type: application/json
 ```bash
 POST /rpc
 Content-Type: application/json
-x402-payment: {"paymentPayload": {...}, "paymentRequirements": {...}}
+x402-payment: {"paymentPayload": {...}, "paymentRequirements": {...}}  # stringified JSON
 
 {
   "method": "getSlot",
@@ -171,17 +166,19 @@ x402-payment: {"paymentPayload": {...}, "paymentRequirements": {...}}
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "result": 12345678,
+  "result": 379462958,
   "x402": {
-    "provider": "Triton One",
+    "provider": "Helius",
     "paymentInfo": {
       "provider": "solana",
       "chain": "solana",
-      "txHash": "5x...",
-      "amount": 0.0001,
-      "explorer": "https://orb.helius.dev/tx/5x..."
+      "txHash": "5CTE4kkD7Zrs+TM9qDbl5cnLn4vV1RmH2XzSd1R9p9tyK5Smj56d52KnGwCD4zQ3CVQKtF1U7zNWLuabPyCuRzh",
+      "amount": 0.00015,
+      "explorer": "https://orb.helius.dev/tx/5CTE4kkD7ZrsTM9qDb...uRzh",
+      "payer": "AyfXgR95iMn9CuxJReJqCHGCM2R6xFgE79NMA7WR75k",
+      "timestamp": "2025-10-28T19:12:40.582Z"
     },
-    "cost": 0.0001,
+    "cost": 0.00015,
     "status": "settled"
   }
 }
@@ -200,16 +197,17 @@ GET /providers?chain=solana
       "id": "triton-solana",
       "name": "Triton One",
       "chains": ["solana"],
-      "costPerCall": 0.0001,
-      "batchCost": {
-        "calls": 1000,
-        "price": 0.08
-      },
+      "costPerCall": 0.00015,
+      "batchCost": { "calls": 1000, "price": 0.12 },
       "status": "active",
-      "priority": 100,
-      "averageLatency": 245
+      "priority": 90,
+      "averageLatency": 241,
+      "metadata": {
+        "supportedMethods": ["getSlot", "getBalance", "..."]
+      }
     }
-  ]
+  ],
+  "total": 1
 }
 ```
 
@@ -224,11 +222,11 @@ GET /batch-pricing?chain=solana
   "chain": "solana",
   "batchOptions": [
     {
-      "providerId": "triton-solana",
-      "providerName": "Triton One",
+      "providerId": "helius-solana",
+      "providerName": "Helius",
       "calls": 1000,
-      "price": 0.08,
-      "pricePerCall": 0.00008,
+      "price": 0.12,
+      "pricePerCall": 0.00012,
       "savings": "20.0%"
     }
   ]
@@ -254,7 +252,110 @@ GET /health
 }
 ```
 
-## 🤖 AI Agent Integration
+#### 5. Facilitator Status
+
+```bash
+GET /facilitator
+```
+
+```json
+{
+  "primary": {
+    "name": "x402labs",
+    "type": "x402labs",
+    "available": true
+  },
+  "fallback": {
+    "name": "CodeNut Pay",
+    "type": "codenut",
+    "available": true
+  },
+  "configuration": {
+    "type": "auto",
+    "fallbackEnabled": true
+  },
+  "recommendation": "Using primary facilitator: x402labs"
+}
+```
+
+#### 6. Pricing Oracle
+
+```bash
+GET /pricing/sol-usd
+```
+
+```json
+{
+  "current": {
+    "price": 156.38,
+    "source": "Jupiter",
+    "timestamp": "2025-11-11T19:05:28.439Z"
+  },
+  "cached": {
+    "price": 156.12,
+    "age": "42s"
+  },
+  "health": { "healthy": true },
+  "providerCosts": [
+    {
+      "provider": "Helius",
+      "usdCost": 0.00015,
+      "lamports": 890880,
+      "sol": "0.000890880"
+    }
+  ]
+}
+```
+
+#### 7. RPC Methods
+
+```bash
+GET /rpc-methods?chain=solana
+```
+
+```json
+{
+  "chain": "solana",
+  "provider": "Helius",
+  "methods": [
+    "getSlot",
+    "getBalance",
+    "getLatestBlockhash",
+    "getAccountInfo"
+  ],
+  "documentation": "https://docs.solana.com/api"
+}
+```
+
+#### 8. Solana RPC Proxy (Server-to-Server)
+
+```bash
+POST /solana-rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getLatestBlockhash",
+  "params": [{"commitment": "confirmed"}]
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": { "slot": 379462953 },
+    "value": {
+      "blockhash": "5xUgf...R9zA",
+      "lastValidBlockHeight": 310551215
+    }
+  },
+  "id": 1
+}
+```
+
+##  AI Agent Integration
 
 ### JavaScript/TypeScript
 
@@ -278,13 +379,13 @@ result = agent.call_rpc('getSlot', [], chain='solana')
 print(f"Current slot: {result['result']}")
 ```
 
-## 💰 Payment Flows
+## Payment Flows
 
 ### Single Payment
 
 1. Agent calls `/rpc` without payment
-2. Receives 402 + invoice
-3. Creates signed USDC transfer + intent
+2. Receives 402 challenge (`x402Version` + `accepts[]`)
+3. Builds facilitator-specific payment payload (SOL transfer or USDC partial transaction)
 4. Retries with `x402-payment` header
 5. Facilitator verifies & settles
 6. RPC call executes
@@ -292,10 +393,103 @@ print(f"Current slot: {result['result']}")
 ### Batch Payment
 
 1. Agent requests batch: `{"batchPurchase": true}`
-2. Pays for 1K calls upfront ($0.08)
+2. Pays for 1K calls upfront (quoted in the 402 response)
 3. Receives `batchId`
 4. Uses `x402-batch: {"batchId": "..."}` for next 1K calls
 5. No per-call payment needed until batch depleted
+
+### x402 Payment Header Reference
+
+`x402-payment` is always a JSON string with `{ "paymentPayload": {...}, "paymentRequirements": {...} }`.
+
+#### x402labs (SOL self-hosted)
+
+```json
+{
+  "paymentPayload": {
+    "facilitator": "x402labs",
+    "signedIntent": {
+      "publicKey": "AyfXgR95iMn9CuxJReJqCHGCM2R6xFgE79NMA7WR75k",
+      "signature": "3j5Y...9fzr"
+    },
+    "txBase64": "5oE7...xJvS",
+    "network": "solana-mainnet"
+  },
+  "paymentRequirements": {
+    "amount": 890880,
+    "recipient": "wallet_address",
+    "nonce": "1762898224761-0.11427330977237005",
+    "resource": "https://x402labs.cloud/rpc"
+  }
+}
+```
+
+- Encode the signed transaction bytes with base58 (legacy field name).
+- Ensure lamports ≥ 890,880 (rent-exempt minimum).
+
+#### CodeNut Pay (USDC on Solana)
+
+```json
+{
+  "paymentPayload": {
+    "x402Version": 1,
+    "scheme": "exact",
+    "network": "solana",
+    "facilitator": "codenut",
+    "payload": {
+      "transaction": "AgAAAAACAAACr8..."  // base64, requireAllSignatures=false
+    }
+  },
+  "paymentRequirements": {
+    "scheme": "exact",
+    "network": "solana",
+    "maxAmountRequired": "150",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo": "wallet_address",
+    "resource": "https://x402labs.cloud/rpc",
+    "description": "x402 RPC payment",
+    "extra": {
+      "feePayer": "HsozMJWWHNADoZRmhDGKzua6XW6NNfNDdQ4CkE9i5wHt",
+      "nonce": "1762898224761-0.11427330977237005"
+    }
+  }
+}
+```
+
+- Instruction order: `ComputeBudget.limit(40000)` → `ComputeBudget.price(1)` → `TransferChecked`.
+- Serialize with `requireAllSignatures=false`; facilitator adds the fee-payer signature.
+
+#### PayAI Network (USDC on Solana)
+
+```json
+{
+  "paymentPayload": {
+    "x402Version": 1,
+    "scheme": "exact",
+    "network": "solana",
+    "facilitator": "payai",
+    "payload": {
+      "transaction": "AgAAAAABAAABo0..."  // base64, fee payer = PayAI treasury
+    }
+  },
+  "paymentRequirements": {
+    "scheme": "exact",
+    "network": "solana",
+    "maxAmountRequired": "150",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo": "wallet_address",
+    "resource": "https://x402labs.cloud/rpc",
+    "description": "x402 RPC payment",
+    "extra": {
+      "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+    }
+  }
+}
+```
+
+- Build transactions with PayAI’s `x402-solana` SDK (v0.1.4).
+- Instruction order: `ComputeBudget.limit(40000)` → `ComputeBudget.price(1)` → `TransferChecked` (no inline ATA creation).
+- Serialize with `requireAllSignatures=false`; PayAI completes signatures and broadcasts.
 
 ## 🔧 Configuration
 
@@ -322,7 +516,7 @@ print(f"Current slot: {result['result']}")
 }
 ```
 
-## 📊 Supported RPC Methods
+## Supported RPC Methods
 
 ### Solana (Triton.one Focus)
 
@@ -355,7 +549,7 @@ curl -X POST https://x402labs.cloud/rpc \
   -H "Content-Type: application/json" \
   -d '{"method":"getSlot","chain":"solana"}'
 
-# Response: 402 with invoice
+# Response: 402 with x402Version + accepts[]
 
 # 2. (In production, pay via wallet)
 
@@ -365,7 +559,7 @@ curl -X POST https://x402labs.cloud/rpc \
   -H "x402-payment: {\"paymentPayload\":..., \"paymentRequirements\":...}" \
   -d '{"method":"getSlot","chain":"solana"}'
 
-# Response: 200 with result + receipt
+# Response: 200 with result + x402 receipt (provider, tx hash, amount)
 ```
 
 ### Browser Demo
@@ -387,14 +581,20 @@ x402-rpc-aggregator/
 ├── src/
 │   ├── index.ts                 # Main server
 │   ├── types/                   # TypeScript definitions
+│   ├── pricing/                 # Dynamic SOL/USD pricing oracle
 │   ├── providers/
 │   │   ├── provider-registry.ts # Provider management + health
 │   ├── providers.ts             # Provider configs (Triton, etc.)
 │   ├── router.ts                # Intelligent routing logic
 │   ├── facilitator/
-│   │   └── solana-facilitator.ts # Solana x402 implementation
+│   │   ├── facilitator-manager.ts   # Orchestrates facilitator selection
+│   │   ├── codenut-facilitator.ts   # CodeNut verify/settle client
+│   │   ├── payai-sdk-facilitator.ts # PayAI SDK integration
+│   │   └── solana-facilitator.ts    # Self-hosted SOL settlement
 │   ├── middleware/
-│   │   └── enhanced-x402-middleware.ts # Payment middleware
+│   │   └── unified-x402-middleware.ts  # Unified x402 handler
+│   ├── routes/
+│   │   └── solana-proxy.ts            # Server-to-server Solana RPC proxy
 │   └── swagger.ts               # API documentation
 ├── x402-sovereign/              # Git submodule (EVM support)
 ├── lib/
@@ -406,7 +606,7 @@ x402-rpc-aggregator/
 └── package.json
 ```
 
-## 🛣️ Roadmap
+## Roadmap
 
 - [ ] Redis/PostgreSQL for batch payment persistence
 - [ ] WebSocket support for real-time data

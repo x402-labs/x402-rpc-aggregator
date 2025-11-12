@@ -6,9 +6,10 @@
 
 import { SolanaFacilitator } from './solana-facilitator';
 import { PayAISdkFacilitator } from './payai-sdk-facilitator';
+import { CodeNutFacilitator } from './codenut-facilitator';
 import axios from 'axios';
 
-export type FacilitatorType = 'x402labs' | 'payai' | 'auto';
+export type FacilitatorType = 'x402labs' | 'payai' | 'codenut' | 'auto';
 
 export interface FacilitatorConfig {
   type: FacilitatorType;
@@ -18,9 +19,12 @@ export interface FacilitatorConfig {
   networks?: any[];
   // PayAI config
   payaiFacilitatorUrl?: string;
+  // CodeNut config
+  codenutFacilitatorUrl?: string;
+  codenutNetwork?: 'base' | 'solana';
   // Fallback options
   enableFallback?: boolean;
-  fallbackType?: 'x402labs' | 'payai';
+  fallbackType?: 'x402labs' | 'payai' | 'codenut';
 }
 
 export interface VerifyResult {
@@ -114,6 +118,66 @@ export class SelfHostedFacilitator implements IFacilitator {
         transaction: result.txHash,
       };
     } catch (err: any) {
+      return { settled: false, error: err.message };
+    }
+  }
+}
+
+/**
+ * CodeNut Facilitator Wrapper
+ */
+export class CodeNutFacilitatorWrapper implements IFacilitator {
+  name = 'CodeNut Pay';
+  type: FacilitatorType = 'codenut';
+  private facilitator: CodeNutFacilitator;
+
+  constructor(config: FacilitatorConfig) {
+    this.facilitator = new CodeNutFacilitator({
+      facilitatorUrl: config.codenutFacilitatorUrl || 'https://facilitator.codenut.ai',
+      network: config.codenutNetwork || 'base',
+    });
+    console.log(`✅ CodeNut Facilitator initialized`);
+  }
+
+  isAvailable(): boolean {
+    return this.facilitator.isAvailable();
+  }
+
+  async verifyPayment(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
+    try {
+      console.log(`🔐 CodeNutFacilitator: Starting verification...`);
+      const result = await this.facilitator.verifyPayment(paymentPayload, paymentRequirements);
+      console.log(`🔐 CodeNutFacilitator: Verification result:`, { valid: result.valid, error: result.error });
+      
+      return {
+        valid: result.valid,
+        isValid: result.valid,
+        buyerPubkey: result.buyerPubkey || result.payer,
+        payer: result.payer || result.buyerPubkey,
+        error: result.error,
+      };
+    } catch (err: any) {
+      console.error(`❌ CodeNutFacilitator: Verification exception:`, err.message);
+      return { valid: false, error: err.message };
+    }
+  }
+
+  async settlePayment(paymentPayload: any, paymentRequirements: any): Promise<SettleResult> {
+    try {
+      console.log(`💰 CodeNutFacilitator: Starting settlement...`);
+      const result = await this.facilitator.settlePayment(paymentPayload, paymentRequirements);
+      console.log(`💰 CodeNutFacilitator: Settlement result:`, { settled: result.settled, txHash: result.txHash });
+      
+      return {
+        settled: result.settled,
+        success: result.settled,
+        txHash: result.txHash || result.transaction,
+        transaction: result.transaction || result.txHash,
+        error: result.error,
+        errorReason: result.errorReason,
+      };
+    } catch (err: any) {
+      console.error(`❌ CodeNutFacilitator: Settlement exception:`, err.message);
       return { settled: false, error: err.message };
     }
   }
@@ -244,11 +308,28 @@ export class PayAIFacilitator implements IFacilitator {
 export class FacilitatorManager {
   private primaryFacilitator: IFacilitator | null = null;
   private fallbackFacilitator: IFacilitator | null = null;
+  private payaiFacilitator: PayAIFacilitator | null = null;
   private config: FacilitatorConfig;
 
   constructor(config: FacilitatorConfig) {
     this.config = config;
     this.initialize();
+  }
+
+  private getOrCreatePayAIFacilitator(): PayAIFacilitator {
+    if (this.primaryFacilitator?.type === 'payai') {
+      return this.primaryFacilitator as PayAIFacilitator;
+    }
+
+    if (this.fallbackFacilitator?.type === 'payai') {
+      return this.fallbackFacilitator as PayAIFacilitator;
+    }
+
+    if (!this.payaiFacilitator) {
+      this.payaiFacilitator = new PayAIFacilitator(this.config);
+    }
+
+    return this.payaiFacilitator;
   }
 
   private initialize() {
@@ -257,22 +338,41 @@ export class FacilitatorManager {
     // Initialize primary facilitator
     if (type === 'x402labs') {
       this.primaryFacilitator = new SelfHostedFacilitator(this.config);
-      if (enableFallback && fallbackType === 'payai') {
-        this.fallbackFacilitator = new PayAIFacilitator(this.config);
+      if (enableFallback) {
+        if (fallbackType === 'payai') {
+          this.fallbackFacilitator = this.getOrCreatePayAIFacilitator();
+        } else if (fallbackType === 'codenut') {
+          this.fallbackFacilitator = new CodeNutFacilitatorWrapper(this.config);
+        }
       }
     } else if (type === 'payai') {
-      this.primaryFacilitator = new PayAIFacilitator(this.config);
-      if (enableFallback && fallbackType === 'x402labs') {
+      this.primaryFacilitator = this.getOrCreatePayAIFacilitator();
+      if (enableFallback) {
+        if (fallbackType === 'x402labs') {
+          this.fallbackFacilitator = new SelfHostedFacilitator(this.config);
+        } else if (fallbackType === 'codenut') {
+          this.fallbackFacilitator = new CodeNutFacilitatorWrapper(this.config);
+        }
+      }
+    } else if (type === 'codenut') {
+      this.primaryFacilitator = new CodeNutFacilitatorWrapper(this.config);
+      if (enableFallback) {
+        if (fallbackType === 'x402labs') {
         this.fallbackFacilitator = new SelfHostedFacilitator(this.config);
+        } else if (fallbackType === 'payai') {
+          this.fallbackFacilitator = this.getOrCreatePayAIFacilitator();
+        }
       }
     } else if (type === 'auto') {
-      // Auto: Try x402labs first, fallback to PayAI
+      // Auto: Try x402labs first, then CodeNut, then PayAI
       const x402labsFacilitator = new SelfHostedFacilitator(this.config);
       if (x402labsFacilitator.isAvailable()) {
         this.primaryFacilitator = x402labsFacilitator;
-        this.fallbackFacilitator = new PayAIFacilitator(this.config);
+        this.fallbackFacilitator = new CodeNutFacilitatorWrapper(this.config);
       } else {
-        this.primaryFacilitator = new PayAIFacilitator(this.config);
+        // x402labs not available, try CodeNut with PayAI fallback
+        this.primaryFacilitator = new CodeNutFacilitatorWrapper(this.config);
+        this.fallbackFacilitator = new PayAIFacilitator(this.config);
       }
     }
 
@@ -305,7 +405,7 @@ export class FacilitatorManager {
   async verifyPayment(
     paymentPayload: any, 
     paymentRequirements: any, 
-    forceFacilitator?: 'x402labs' | 'payai'
+    forceFacilitator?: 'x402labs' | 'payai' | 'codenut'
   ): Promise<VerifyResult & { facilitator: string }> {
     // If client forces a specific facilitator, try to honor it
     if (forceFacilitator === 'x402labs') {
@@ -337,11 +437,36 @@ export class FacilitatorManager {
         const result = await this.fallbackFacilitator.verifyPayment(paymentPayload, paymentRequirements);
         return { ...result, facilitator: this.fallbackFacilitator.name };
       } else {
+        console.log('🎯 Using client-requested PayAI Network facilitator (standalone)');
+        const payai = this.getOrCreatePayAIFacilitator();
+        if (payai) {
+          const result = await payai.verifyPayment(paymentPayload, paymentRequirements);
+          return { ...result, facilitator: payai.name };
+        }
         return { 
           valid: false, 
           isValid: false,
           error: 'PayAI Network facilitator not available',
           facilitator: 'payai (unavailable)' 
+        };
+      }
+    }
+    
+    if (forceFacilitator === 'codenut') {
+      if (this.primaryFacilitator?.type === 'codenut' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested CodeNut facilitator');
+        const result = await this.primaryFacilitator.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.primaryFacilitator.name };
+      } else if (this.fallbackFacilitator?.type === 'codenut' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested CodeNut facilitator (from fallback)');
+        const result = await this.fallbackFacilitator.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.fallbackFacilitator.name };
+      } else {
+        return { 
+          valid: false, 
+          isValid: false,
+          error: 'CodeNut facilitator not available',
+          facilitator: 'codenut (unavailable)' 
         };
       }
     }
@@ -376,7 +501,7 @@ export class FacilitatorManager {
   async settlePayment(
     paymentPayload: any, 
     paymentRequirements: any,
-    forceFacilitator?: 'x402labs' | 'payai'
+    forceFacilitator?: 'x402labs' | 'payai' | 'codenut'
   ): Promise<SettleResult & { facilitator: string }> {
     // If client forces a specific facilitator, try to honor it
     if (forceFacilitator === 'x402labs') {
@@ -408,11 +533,36 @@ export class FacilitatorManager {
         const result = await this.fallbackFacilitator.settlePayment(paymentPayload, paymentRequirements);
         return { ...result, facilitator: this.fallbackFacilitator.name };
       } else {
+        console.log('🎯 Using client-requested PayAI Network facilitator (standalone)');
+        const payai = this.getOrCreatePayAIFacilitator();
+        if (payai) {
+          const result = await payai.settlePayment(paymentPayload, paymentRequirements);
+          return { ...result, facilitator: payai.name };
+        }
         return { 
           settled: false,
           success: false,
           error: 'PayAI Network facilitator not available',
           facilitator: 'payai (unavailable)' 
+        };
+      }
+    }
+    
+    if (forceFacilitator === 'codenut') {
+      if (this.primaryFacilitator?.type === 'codenut' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested CodeNut facilitator');
+        const result = await this.primaryFacilitator.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.primaryFacilitator.name };
+      } else if (this.fallbackFacilitator?.type === 'codenut' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested CodeNut facilitator (from fallback)');
+        const result = await this.fallbackFacilitator.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.fallbackFacilitator.name };
+      } else {
+        return { 
+          settled: false,
+          success: false,
+          error: 'CodeNut facilitator not available',
+          facilitator: 'codenut (unavailable)' 
         };
       }
     }
@@ -499,9 +649,13 @@ export function createFacilitatorManager(): FacilitatorManager {
     // PayAI config
     payaiFacilitatorUrl: process.env.PAYAI_FACILITATOR_URL || 'https://facilitator.payai.network',
     
+    // CodeNut config
+    codenutFacilitatorUrl: process.env.CODENUT_FACILITATOR_URL || 'https://facilitator.codenut.ai',
+    codenutNetwork: (process.env.CODENUT_NETWORK as 'base' | 'solana') || 'base',
+    
     // Fallback config
     enableFallback: process.env.X402_ENABLE_FALLBACK !== 'false',
-    fallbackType: (process.env.X402_FALLBACK_TYPE as 'x402labs' | 'payai') || 'payai',
+    fallbackType: (process.env.X402_FALLBACK_TYPE as 'x402labs' | 'payai' | 'codenut') || 'codenut',
   };
 
   return new FacilitatorManager(config);

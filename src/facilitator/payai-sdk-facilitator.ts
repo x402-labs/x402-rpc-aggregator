@@ -38,16 +38,18 @@ export class PayAISdkFacilitator {
   private handler: any; // X402PaymentHandler instance
   private network: 'solana' | 'solana-devnet';
   private treasuryAddress: string;
+  private facilitatorUrl: string;
 
   constructor(config: PayAISdkFacilitatorConfig) {
     this.network = config.network;
     this.treasuryAddress = config.treasuryAddress;
+    this.facilitatorUrl = config.facilitatorUrl || 'https://facilitator.payai.network';
 
     // Initialize X402PaymentHandler from official SDK
     this.handler = new X402PaymentHandler({
       network: config.network,
       treasuryAddress: config.treasuryAddress,
-      facilitatorUrl: config.facilitatorUrl || 'https://facilitator.payai.network',
+      facilitatorUrl: this.facilitatorUrl,
       rpcUrl: config.rpcUrl,
       defaultToken: config.defaultToken, // USDC mint
     });
@@ -147,40 +149,40 @@ export class PayAISdkFacilitator {
       console.log(`   Handler type:`, typeof this.handler);
       console.log(`   Handler.verifyPayment type:`, typeof this.handler.verifyPayment);
       
-      let result;
-      try {
-        result = await this.handler.verifyPayment(paymentHeader, sdkRequirements);
+      const result = await this.handler.verifyPayment(paymentHeader, sdkRequirements);
         console.log(`   PayAI SDK result type:`, typeof result);
-        console.log(`   PayAI SDK result:`, JSON.stringify(result, null, 2));
-      } catch (sdkError: any) {
-        console.error(`   ❌ SDK verifyPayment threw error:`, sdkError);
-        console.error(`   Error message:`, sdkError.message);
-        console.error(`   Error stack:`, sdkError.stack);
+      console.log(`   PayAI SDK raw result:`, JSON.stringify(result, null, 2));
+
+      // Some versions wrap the facilitator response under a `data` field
+      const normalized = result?.data ? result.data : result;
+      console.log(`   PayAI SDK normalized result:`, JSON.stringify(normalized, null, 2));
+
+      if (!normalized) {
+        console.error(`❌ PayAI Network returned empty result`);
         return {
           valid: false,
-          error: `SDK error: ${sdkError.message}`,
+          error: 'PayAI facilitator returned empty response',
         };
       }
 
-      if (!result || !result.isValid) {
+      if (!normalized.isValid) {
         console.error(`❌ PayAI Network rejected verification`);
-        console.error(`   Result:`, result);
-        console.error(`   Invalid reason:`, result?.invalidReason);
+        console.error(`   Result:`, normalized);
+        console.error(`   Invalid reason:`, normalized?.invalidReason);
         console.error(`   Treasury we sent:`, this.treasuryAddress);
         console.error(`   PaymentPayload keys:`, Object.keys(paymentPayload));
         
-        return {
-          valid: false,
-          error: result?.invalidReason || 'Payment verification failed via PayAI Network',
-        };
+        // Attempt HTTP fallback before failing hard
+        const fallbackResult = await this.verifyViaHttp(paymentPayload, paymentRequirements);
+        return fallbackResult;
       }
 
       console.log(`✅ PayAI Network verification successful!`);
 
       return {
         valid: true,
-        buyerPubkey: payerPublicKey || 'unknown',
-        payer: payerPublicKey || 'unknown',
+        buyerPubkey: normalized?.payer || payerPublicKey || 'unknown',
+        payer: normalized?.payer || payerPublicKey || 'unknown',
       };
     } catch (error: any) {
       console.error('❌ PayAI Network verification error:', error.message);
@@ -253,24 +255,30 @@ export class PayAISdkFacilitator {
       console.log(`   SDK Requirements:`, JSON.stringify(sdkRequirements, null, 2).substring(0, 400));
 
       // Use PayAI SDK's settlePayment method
-      const result = await this.handler.settlePayment(paymentHeader, sdkRequirements);
+      const sdkResult = await this.handler.settlePayment(paymentHeader, sdkRequirements);
 
-      console.log(`   PayAI Network settlement result:`, result);
+      console.log(`   PayAI Network raw settlement result:`, sdkResult);
+
+      const normalized = sdkResult?.data ? sdkResult.data : sdkResult;
+      console.log(`   PayAI Network normalized settlement result:`, normalized);
 
       // PayAI SDK returns SettleResponse: { success, transaction, errorReason }
-      if (result && result.success && result.transaction) {
-        console.log(`✅ Payment settled by PayAI Network: ${result.transaction}`);
+      if (normalized && normalized.success && normalized.transaction) {
+        console.log(`✅ Payment settled by PayAI Network: ${normalized.transaction}`);
         return {
           settled: true,
-          txHash: result.transaction,
-          transaction: result.transaction,
+          txHash: normalized.transaction,
+          transaction: normalized.transaction,
         };
       }
 
-      return {
-        settled: false,
-        error: result?.errorReason || 'Settlement failed via PayAI Network',
-      };
+      // HTTP fallback
+      const fallbackResult = await this.settleViaHttp(paymentPayload, paymentRequirements);
+      if (fallbackResult.settled) {
+        return fallbackResult;
+      }
+
+      return fallbackResult;
     } catch (error: any) {
       console.error('❌ PayAI Network settlement error:', error.message);
       return {
@@ -292,6 +300,60 @@ export class PayAISdkFacilitator {
    */
   getNetwork(): string {
     return this.network;
+  }
+
+  private async verifyViaHttp(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
+    try {
+      const axios = require('axios');
+      const response = await axios.post(
+        `${this.facilitatorUrl}/verify`,
+        { paymentPayload, paymentRequirements },
+        { timeout: 5000 }
+      );
+
+      return {
+        valid: response.data.isValid,
+        buyerPubkey: response.data.payer,
+        payer: response.data.payer,
+        error: response.data.isValid ? undefined : response.data.invalidReason || response.data.message,
+      };
+    } catch (err: any) {
+      console.error('   ❌ HTTP verify fallback failed:', err.message);
+      return {
+        valid: false,
+        error: err.response?.data?.invalidReason || err.response?.data?.message || err.message,
+      };
+    }
+  }
+
+  private async settleViaHttp(paymentPayload: any, paymentRequirements: any): Promise<SettleResult> {
+    try {
+      const axios = require('axios');
+      const response = await axios.post(
+        `${this.facilitatorUrl}/settle`,
+        { paymentPayload, paymentRequirements },
+        { timeout: 10000 }
+      );
+
+      if (response.data?.success) {
+        return {
+          settled: true,
+          txHash: response.data.transaction,
+          transaction: response.data.transaction,
+        };
+      }
+
+      return {
+        settled: false,
+        error: response.data?.errorReason || response.data?.message || 'Settlement failed via PayAI Network',
+      };
+    } catch (err: any) {
+      console.error('   ❌ HTTP settle fallback failed:', err.message);
+      return {
+        settled: false,
+        error: err.response?.data?.errorReason || err.response?.data?.message || err.message,
+      };
+    }
   }
 }
 

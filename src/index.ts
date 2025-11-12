@@ -87,6 +87,8 @@ const router = new IntelligentRouter(providerRegistry);
 const facilitatorManager = createFacilitatorManager();
 
 // Create unified x402 middleware
+// This middleware handles ALL facilitators (x402labs, PayAI, CodeNut)
+// Facilitator selection is via request body: { facilitator: 'codenut' }
 const x402Middleware = createUnifiedX402Middleware(facilitatorManager, providerRegistry, router);
 
 // Start health checks
@@ -280,6 +282,8 @@ app.get('/rpc-methods', (req: Request, res: Response) => {
 // ========================================
 // MAIN RPC ENDPOINT (WITH UNIFIED x402 MIDDLEWARE)
 // ========================================
+// All facilitators (x402labs, PayAI, CodeNut) use this single endpoint
+// Facilitator selection is via request body: { ..., facilitator: 'codenut' }
 app.post('/rpc', x402Middleware, async (req: any, res: Response) => {
   try {
     const { method, params = [], chain = 'solana', preferences }: RPCRequest = req.body;

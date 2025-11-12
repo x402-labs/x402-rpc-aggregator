@@ -237,10 +237,10 @@ async function createX402Response(
   const facilitatorInfo = facilitatorManager.getInfo();
   
   // Determine which facilitator will be used (client preference or default)
-  let effectiveFacilitator = facilitatorInfo.primary.type || 'payai';
+  let effectiveFacilitator = facilitatorInfo.primary.type || 'codenut';
   
   // If client specifies a facilitator preference, use that for asset selection
-  if (clientFacilitator === 'x402labs' || clientFacilitator === 'payai') {
+  if (clientFacilitator === 'x402labs' || clientFacilitator === 'payai' || clientFacilitator === 'codenut') {
     effectiveFacilitator = clientFacilitator;
   }
   
@@ -251,14 +251,15 @@ async function createX402Response(
   const getChainInfo = (chain: string, facilitatorType: string) => {
     switch (chain) {
       case 'solana':
-        // PayAI uses USDC (1:1 with USD - accurate pricing)
         // x402labs uses SOL (volatile, but that's the facilitator's choice)
+        // PayAI and CodeNut use USDC (1:1 with USD - accurate pricing)
         const asset = facilitatorType === 'x402labs' ? 'SOL' : 'USDC';
         return { network: 'solana', asset };
       case 'ethereum':
         return { network: 'ethereum', asset: 'ETH' };
       case 'base':
-        return { network: 'base', asset: 'ETH' };
+        // CodeNut and others typically use USDC on Base
+        return { network: 'base', asset: 'USDC' };
       default:
         return { network: chain, asset: 'USDC' };
     }
@@ -412,11 +413,15 @@ async function createX402Response(
         type: facilitatorInfo.primary.type,
         fallback: facilitatorInfo.fallback?.name,
       },
-      // Include PayAI facilitator feePayer address (required for transaction building)
+      // Include facilitator feePayer address (required for transaction building)
       // Per PayAI transaction builder: https://github.com/PayAINetwork/x402-solana/blob/main/src/client/transaction-builder.ts
       // The transaction must have facilitator as feePayer before user signs
       ...(effectiveFacilitator === 'payai' && {
         feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4',
+      }),
+      // CodeNut facilitator feePayer (from /supported endpoint)
+      ...(effectiveFacilitator === 'codenut' && chain === 'solana' && {
+        feePayer: 'HsozMJWWHNADoZRmhDGKzua6XW6NNfNDdQ4CkE9i5wHt',
       }),
       // Include batch option if available
       ...(provider.batchCost && {
