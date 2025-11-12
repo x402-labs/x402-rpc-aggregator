@@ -1320,31 +1320,40 @@
           
           const tx = new Transaction();
           
-          // Instruction 0: Set compute unit limit (PayAI requires 40,000 units)
+          // Instruction 0: Set compute unit limit (PayAI requires up to 7,000 units for token transfers)
           tx.add(
-            window.splToken.createComputeUnitLimitInstruction(40000)
+            window.splToken.createComputeUnitLimitInstruction(7000)
           );
           
-          // Instruction 1: Set compute unit price (minimal)
+          // Instruction 1: Set compute unit price (< 5 lamports as per PayAI spec)
           tx.add(
-            window.splToken.createComputeUnitPriceInstruction(1)  // 1 microlamport = minimal
+            window.splToken.createComputeUnitPriceInstruction(1000000)  // 1 lamport = 1,000,000 microlamports
           );
           
           console.log('   ✅ Added ComputeBudget instructions (required by PayAI)');
           
-          // IMPORTANT: PayAI requires merchant's ATA to exist BEFORE payment
-          // Do NOT include CreateATA in the payment transaction
+          // Instruction 2: CreateATA if needed (merchant's ATA must exist)
+          // PayAI requires this instruction in the transaction
+          let instructionIndex = 2;
           if (needsAccountCreation) {
-            throw new Error(
-              'Treasury USDC account does not exist yet!\\n\\n' +
-              'PayAI Network requires the merchant ATA to exist before payment.\\n' +
-              'Please contact the merchant to set up their USDC account first.\\n\\n' +
-              'Treasury: ' + paymentDetails.payTo + '\\n' +
-              'ATA needed: ' + toATA.toBase58()
+            console.log('   📝 Creating treasury USDC account (ATA)...');
+            
+            // Instruction: Create Associated Token Account for merchant
+            // CRITICAL: Use TOKEN_PROGRAM_ID (Solana standard tokens, not Token-2022)
+            tx.add(
+              window.splToken.createAssociatedTokenAccountInstruction(
+                wallet.publicKey,  // payer (user pays for account creation)
+                toATA,             // associatedToken (the ATA we're creating)
+                treasuryPubkey,    // owner (the merchant/treasury)
+                USDC_MINT          // mint (USDC)
+              )
             );
+            
+            console.log('   ✅ Added CreateATA instruction for:', toATA.toBase58());
+            instructionIndex = 3;
           }
           
-          // Instruction 2: USDC TransferChecked
+          // Instruction 2 or 3: USDC TransferChecked (depending on whether we created ATA)
           tx.add(
             window.splToken.createTransferCheckedInstruction(
               fromATA,           // source
