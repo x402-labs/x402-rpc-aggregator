@@ -1338,6 +1338,9 @@
           if (needsAccountCreation) {
             console.log('   📝 Creating treasury USDC account (ATA)...');
             
+            // Create PublicKey from treasury address
+            const treasuryPubkey = new PublicKey(paymentDetails.payTo);
+            
             // Instruction: Create Associated Token Account for merchant
             // CRITICAL: Use TOKEN_PROGRAM_ID (Solana standard tokens, not Token-2022)
             tx.add(
