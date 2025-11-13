@@ -1403,7 +1403,7 @@
           console.log('     - Fee payer:', tx.message.staticAccountKeys[0].toBase58());
           console.log('     - Blockhash:', tx.message.recentBlockhash.substring(0, 8) + '...');
           console.log('   Requesting signature from Phantom...');
-          
+            
           // Sign with user's wallet (partial signature)
           const signed = await wallet.signTransaction(tx);
           console.log('✅ Transaction signed by user');
