@@ -74,8 +74,8 @@
     })();
   </script>
 
-  <!-- Use v1.95.0 - Latest stable version, proven to work with Phantom -->
-  <script src="https://unpkg.com/@solana/web3.js@1.95.0/lib/index.iife.min.js"></script>
+  <!-- Use v1.73.0 - Latest version with both VersionedTransaction and working SystemProgram.transfer -->
+  <script src="https://unpkg.com/@solana/web3.js@1.73.0/lib/index.iife.min.js"></script>
   
   <!-- SPL Token functions (manual implementation since CDN doesn't have browser build) -->
   <script>
@@ -433,7 +433,7 @@
         <div class="bg-gray-800 p-6 rounded-xl">
           <h2 class="text-xl font-semibold mb-4">1. Connect Wallet</h2>
           <button id="connect" class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold">
-            Connect Phantom
+            Connect Phantom Wallet to try demo.
           </button>
           <p id="wallet" class="mt-2 text-sm text-gray-400"></p>
         </div>
@@ -1503,7 +1503,12 @@
           console.log(' Got blockhash:', blockhash.substring(0, 8) + '...');
           
           // Use the EXACT payment amount from invoice (more accurate, less suspicious to Phantom)
-          const lamports = parseInt(paymentDetails.maxAmountRequired, 10);
+          // Ensure lamports is a proper integer number (not string) for newer @solana/web3.js versions
+          const lamportsRaw = paymentDetails.maxAmountRequired;
+          const lamports = Math.floor(Number(lamportsRaw));
+          if (isNaN(lamports) || lamports < 0 || !Number.isInteger(lamports)) {
+            throw new Error(`Invalid lamports amount: ${lamportsRaw} (must be a positive integer)`);
+          }
           console.log('💰 Transfer amount:', lamports, `lamports (${(lamports / 1e9).toFixed(9)} SOL)`);
           
           // Create legacy transaction (most compatible with all Phantom versions)
@@ -1512,15 +1517,33 @@
       tx.recentBlockhash = blockhash;
           tx.feePayer = wallet.publicKey;
           
-          // v1.20.3 has working SystemProgram.transfer (no Blob.encode bug!)
-          console.log(' Using native SystemProgram.transfer (v1.20.3 works!)');
-          tx.add(
-            SystemProgram.transfer({
-              fromPubkey: wallet.publicKey,
-              toPubkey: new PublicKey(paymentDetails.payTo),
-              lamports: lamports
-            })
-          );
+          // Manual SystemProgram.transfer instruction (avoids Blob.encode issues in newer web3.js)
+          console.log(' Creating manual SystemProgram.transfer instruction');
+          
+          // Encode lamports as little-endian 64-bit unsigned integer (8 bytes)
+          const lamportsBuffer = new Uint8Array(12); // 4 bytes for instruction type + 8 bytes for lamports
+          lamportsBuffer[0] = 2; // Transfer instruction discriminator
+          lamportsBuffer[1] = 0;
+          lamportsBuffer[2] = 0;
+          lamportsBuffer[3] = 0;
+          
+          // Write lamports as little-endian 64-bit unsigned integer
+          const lamportsBigInt = BigInt(lamports);
+          for (let i = 0; i < 8; i++) {
+            lamportsBuffer[4 + i] = Number((lamportsBigInt >> BigInt(8 * i)) & BigInt(0xff));
+          }
+          
+          const { TransactionInstruction } = window.solanaWeb3;
+          const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
+          
+          tx.add(new TransactionInstruction({
+            keys: [
+              { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+              { pubkey: new PublicKey(paymentDetails.payTo), isSigner: false, isWritable: true }
+            ],
+            programId: SYSTEM_PROGRAM_ID,
+            data: lamportsBuffer
+          }));
           console.log(' Added transfer instruction');
           console.log(' Transaction ready:', { 
             feePayer: tx.feePayer.toBase58().substring(0, 8) + '...',
