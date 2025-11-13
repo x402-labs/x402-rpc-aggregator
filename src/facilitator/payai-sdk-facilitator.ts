@@ -1,13 +1,12 @@
 /**
- * PayAI SDK Facilitator - Using official x402-solana package
+ * PayAI SDK Facilitator - Using official x402-solana FacilitatorClient
  * 
  * Integrates with PayAI Network using their official SDK
  * Reference: https://github.com/PayAINetwork/x402-solana
  */
 
-// Import from server subpath (CommonJS export)
-const x402Solana = require('x402-solana/server');
-const X402PaymentHandler = x402Solana.X402PaymentHandler;
+// Import FacilitatorClient from server subpath (CommonJS export)
+const { FacilitatorClient } = require('x402-solana/server');
 
 export interface PayAISdkFacilitatorConfig {
   network: 'solana' | 'solana-devnet';
@@ -32,10 +31,10 @@ export interface SettleResult {
 }
 
 /**
- * PayAI Facilitator using official x402-solana SDK
+ * PayAI Facilitator using official x402-solana FacilitatorClient
  */
 export class PayAISdkFacilitator {
-  private handler: any; // X402PaymentHandler instance
+  private handler: any; // FacilitatorClient instance
   private network: 'solana' | 'solana-devnet';
   private treasuryAddress: string;
   private facilitatorUrl: string;
@@ -45,19 +44,14 @@ export class PayAISdkFacilitator {
     this.treasuryAddress = config.treasuryAddress;
     this.facilitatorUrl = config.facilitatorUrl || 'https://facilitator.payai.network';
 
-    // Initialize X402PaymentHandler from official SDK
-    this.handler = new X402PaymentHandler({
-      network: config.network,
-      treasuryAddress: config.treasuryAddress,
-      facilitatorUrl: this.facilitatorUrl,
-      rpcUrl: config.rpcUrl,
-      defaultToken: config.defaultToken, // USDC mint
-    });
+    // Initialize FacilitatorClient from official SDK
+    // FacilitatorClient is the official way to call PayAI's facilitator service
+    this.handler = new FacilitatorClient(this.facilitatorUrl);
 
     console.log(`✅ PayAI SDK Facilitator initialized`);
     console.log(`   Network: ${config.network}`);
     console.log(`   Treasury: ${config.treasuryAddress}`);
-    console.log(`   Facilitator: ${config.facilitatorUrl || 'https://facilitator.payai.network'}`);
+    console.log(`   Facilitator URL: ${this.facilitatorUrl}`);
   }
 
   /**
