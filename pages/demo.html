@@ -74,8 +74,8 @@
     })();
   </script>
 
-  <!-- Use v1.20.3 - Ancient stable version, proven to work with Phantom -->
-  <script src="https://unpkg.com/@solana/web3.js@1.20.3/lib/index.iife.min.js"></script>
+  <!-- Use v1.95.0 - Latest stable version, proven to work with Phantom -->
+  <script src="https://unpkg.com/@solana/web3.js@1.95.0/lib/index.iife.min.js"></script>
   
   <!-- SPL Token functions (manual implementation since CDN doesn't have browser build) -->
   <script>
@@ -561,7 +561,7 @@
     };
     
     walletInfo.innerHTML = `<span class="text-xs text-gray-400">Connect Phantom to explore Solana payments. No Phantom? Install it or switch the network selector to Base to try the CodeNut + MetaMask flow.</span>`;
-    statusPanel.innerHTML = `<div class="bg-gray-700 rounded-lg p-3 text-xs text-gray-500">Ready when you are. Select a network and method, then hit “Call RPC” to fetch data. You will get a 402 challenge before the payment step.</div>`;
+    statusPanel.innerHTML = `<div class="bg-gray-700 rounded-lg p-3 text-xs text-gray-500">Ready when you are. Select a network and method, then hit "Call RPC" to fetch data. You will get a 402 challenge before the payment step.</div>`;
     
     function renderMethods(chain) {
       const options = CHAIN_METHODS[chain] || [];
