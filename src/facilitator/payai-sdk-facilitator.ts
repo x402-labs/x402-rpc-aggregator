@@ -81,9 +81,28 @@ export class PayAISdkFacilitator {
       try {
         if (paymentPayload.payload?.transaction) {
           const txBytes = Buffer.from(paymentPayload.payload.transaction, 'base64');
-          const tx = Transaction.from(txBytes);
-          payerPublicKey = tx.feePayer?.toBase58();
-          console.log(`   Extracted payer from transaction: ${payerPublicKey}`);
+          
+          // Try VersionedTransaction first (v0), then fall back to legacy Transaction
+          let payerKey: any = null;
+          try {
+            const { VersionedTransaction } = require('@solana/web3.js');
+            const versionedTx = VersionedTransaction.deserialize(txBytes);
+            // For VersionedTransaction, payer is the first static account
+            payerKey = versionedTx.message.staticAccountKeys[0];
+          } catch (versionedErr) {
+            // Fall back to legacy Transaction
+            try {
+              const tx = Transaction.from(txBytes);
+              payerKey = tx.feePayer;
+            } catch (legacyErr) {
+              console.warn(`   Could not deserialize as VersionedTransaction or legacy Transaction`);
+            }
+          }
+          
+          if (payerKey) {
+            payerPublicKey = payerKey.toBase58();
+            console.log(`   Extracted payer from transaction: ${payerPublicKey}`);
+          }
         }
       } catch (err: any) {
         console.warn(`   Could not extract payer from transaction:`, err.message);
@@ -99,7 +118,7 @@ export class PayAISdkFacilitator {
         description: paymentRequirements.description || 'Payment via x402',
         extra: paymentRequirements.extra || {},
         // CRITICAL: Normalize asset to OBJECT (facilitator expects { address: string })
-        asset: {
+          asset: {
           address: typeof paymentRequirements.asset === 'object' 
             ? paymentRequirements.asset.address 
             : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
@@ -147,7 +166,7 @@ export class PayAISdkFacilitator {
         network: paymentPayload.network,
         payload: paymentPayload.payload  // Contains the transaction
       };
-      
+
       // JSON stringify and BASE64 encode (FacilitatorClient expects this format)
       const paymentHeaderJson = JSON.stringify(x402Payload);
       const paymentHeaderBase64 = Buffer.from(paymentHeaderJson).toString('base64');
@@ -240,11 +259,11 @@ export class PayAISdkFacilitator {
         description: paymentRequirements.description || 'Payment via x402',
         extra: paymentRequirements.extra || {},
         // Normalize asset to OBJECT
-        asset: {
+          asset: {
           address: typeof paymentRequirements.asset === 'object' 
             ? paymentRequirements.asset.address 
             : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-        },
+          },
       };
 
       // Handle amount field
