@@ -336,9 +336,18 @@ export class PayAISdkFacilitator {
   private async verifyViaHttp(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
     try {
       const axios = require('axios');
+      
+      // Build the exact request for detailed logging
+      const requestBody = { paymentPayload, paymentRequirements };
+      
+      console.log(`   📡 HTTP Verify Request to: ${this.facilitatorUrl}/verify`);
+      console.log(`   Request body keys: ${Object.keys(requestBody).join(', ')}`);
+      console.log(`   Payload keys: ${Object.keys(requestBody.paymentPayload || {}).join(', ')}`);
+      console.log(`   Requirements keys: ${Object.keys(requestBody.paymentRequirements || {}).join(', ')}`);
+      
       const response = await axios.post(
         `${this.facilitatorUrl}/verify`,
-        { paymentPayload, paymentRequirements },
+        requestBody,
         { timeout: 5000 }
       );
 
@@ -350,6 +359,10 @@ export class PayAISdkFacilitator {
       };
     } catch (err: any) {
       console.error('   ❌ HTTP verify fallback failed:', err.message);
+      if (err.response?.status) {
+        console.error(`   HTTP Status: ${err.response.status}`);
+        console.error(`   Response: ${JSON.stringify(err.response.data)}`);
+      }
       return {
         valid: false,
         error: err.response?.data?.invalidReason || err.response?.data?.message || err.message,
