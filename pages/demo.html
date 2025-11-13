@@ -1314,50 +1314,43 @@
             needsAccountCreation = true;
           }
           
-          // Build USDC transfer transaction
-          // CRITICAL: PayAI requires ComputeBudget instructions at positions 0 and 1
+          // Build USDC transfer transaction using VersionedTransaction (v0)
+          // CRITICAL: PayAI requires VersionedTransaction (v0), not legacy Transaction
           // Reference: https://github.com/PayAINetwork/x402-solana/blob/main/src/client/transaction-builder.ts
+          // This matches PayAI's official transaction builder exactly
           
-          const tx = new Transaction();
+          const { VersionedTransaction, TransactionMessage } = window.solanaWeb3;
+          
+          // Build instructions array
+          const instructions = [];
           
           // Instruction 0: Set compute unit limit (PayAI requires up to 7,000 units for token transfers)
-          tx.add(
+          instructions.push(
             window.splToken.createComputeUnitLimitInstruction(7000)
           );
           
           // Instruction 1: Set compute unit price (< 5 lamports as per PayAI spec)
-          tx.add(
+          instructions.push(
             window.splToken.createComputeUnitPriceInstruction(1000000)  // 1 lamport = 1,000,000 microlamports
           );
           
           console.log('   ✅ Added ComputeBudget instructions (required by PayAI)');
           
-          // Instruction 2: CreateATA if needed (merchant's ATA must exist)
-          // PayAI requires this instruction in the transaction
-          let instructionIndex = 2;
+          // CRITICAL: PayAI requires merchant's ATA to EXIST BEFORE payment
+          // We CANNOT include CreateATA in the transaction
+          // Check and throw if it doesn't exist
           if (needsAccountCreation) {
-            console.log('   📝 Creating treasury USDC account (ATA)...');
-            
-            // Create PublicKey from treasury address
-            const treasuryPubkey = new PublicKey(paymentDetails.payTo);
-            
-            // Instruction: Create Associated Token Account for merchant
-
-            tx.add(
-              window.splToken.createAssociatedTokenAccountInstruction(
-                wallet.publicKey,  // payer (user pays for account creation)
-                toATA,             // associatedToken (the ATA we're creating)
-                treasuryPubkey,    // owner (the merchant/treasury)
-                USDC_MINT          // mint (USDC)
-              )
+            throw new Error(
+              'Treasury USDC account does not exist yet!\\n\\n' +
+              'PayAI Network requires the merchant ATA to exist before payment.\\n' +
+              'Please contact the merchant to set up their USDC account first.\\n\\n' +
+              'Treasury: ' + paymentDetails.payTo + '\\n' +
+              'ATA needed: ' + toATA.toBase58()
             );
-            
-            console.log('   ✅ Added CreateATA instruction for:', toATA.toBase58());
-            instructionIndex = 3;
           }
           
-          // Instruction 2 or 3: USDC TransferChecked (depending on whether we created ATA)
-          tx.add(
+          // Instruction 2: USDC TransferChecked
+          instructions.push(
             window.splToken.createTransferCheckedInstruction(
               fromATA,           // source
               USDC_MINT,         // mint
@@ -1367,6 +1360,8 @@
               6                  // USDC decimals
             )
           );
+          
+          console.log('   ✅ Added TransferChecked instruction');
           
           // Get fresh blockhash
           const response = await fetch(SOLANA_RPC_PROXY, {
@@ -1381,8 +1376,6 @@
           });
           const { result } = await response.json();
           
-          tx.recentBlockhash = result.value.blockhash;
-          
           // Extract facilitator feePayer
           const facilitatorFeePayer = paymentDetails.extra?.feePayer;
           if (!facilitatorFeePayer) {
@@ -1392,15 +1385,23 @@
             );
           }
           
-          // Set facilitator as fee payer (required by PayAI)
-          tx.feePayer = new PublicKey(facilitatorFeePayer);
+          // Create v0 message with VersionedTransaction
+          // This matches PayAI's transaction-builder.ts exactly
+          const message = new TransactionMessage({
+            payerKey: new PublicKey(facilitatorFeePayer),
+            recentBlockhash: result.value.blockhash,
+            instructions: instructions
+          }).compileToV0Message();
+          
+          // Create VersionedTransaction
+          const tx = new VersionedTransaction(message);
           
           console.log('   Fee payer (PayAI facilitator):', facilitatorFeePayer);
           console.log('   User wallet:', wallet.publicKey.toBase58());
           console.log('   Transaction info before signing:');
-          console.log('     - Instructions:', tx.instructions.length);
-          console.log('     - Fee payer:', tx.feePayer.toBase58());
-          console.log('     - Blockhash:', tx.recentBlockhash.substring(0, 8) + '...');
+          console.log('     - Instructions:', tx.message.compiledInstructions.length);
+          console.log('     - Fee payer:', tx.message.staticAccountKeys[0].toBase58());
+          console.log('     - Blockhash:', tx.message.recentBlockhash.substring(0, 8) + '...');
           console.log('   Requesting signature from Phantom...');
           
           // Sign with user's wallet (partial signature)
@@ -1412,33 +1413,16 @@
             throw new Error('Transaction signing failed: no signatures in transaction');
           }
           
-          // Find user's signature
-          const userSig = signed.signatures.find(sig => 
-            sig.publicKey && sig.publicKey.equals(wallet.publicKey)
-          );
+          console.log('✅ Transaction has', signed.signatures.length, 'signature(s)');
           
-          if (!userSig || !userSig.signature) {
-            throw new Error('User signature missing from transaction');
-          }
-          
-          console.log('✅ User signature verified:', {
-            publicKey: userSig.publicKey.toBase58(),
-            signatureLength: userSig.signature.length,
-            signaturePreview: bs58.encode(userSig.signature).substring(0, 20) + '...'
-          });
-          
-          // Serialize partially signed transaction
-          // Allow missing facilitator signature; PayAI will add it during settlement
+          // For VersionedTransaction, we serialize directly
           let serialized;
           try {
-            serialized = signed.serialize({
-              requireAllSignatures: false,
-              verifySignatures: false,
-            });
+            serialized = Buffer.from(signed.serialize());
             if (!serialized || serialized.length === 0) {
               throw new Error('Transaction serialization returned empty or null');
             }
-            console.log('✅ Transaction serialized successfully, size:', serialized.length, 'bytes');
+            console.log('✅ VersionedTransaction serialized successfully, size:', serialized.length, 'bytes');
           } catch (serErr) {
             console.error('❌ Serialization error:', serErr);
             throw new Error('Failed to serialize transaction: ' + serErr.message);
