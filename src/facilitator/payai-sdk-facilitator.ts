@@ -132,11 +132,11 @@ export class PayAISdkFacilitator {
       console.log(`   SDK: x402-solana FacilitatorClient (https://github.com/PayAINetwork/x402-solana)`);
       
       // CRITICAL: FacilitatorClient.verifyPayment() expects:
-      // - paymentPayload: the x402 payment payload object (NOT base64 encoded)
+      // - paymentHeader: BASE64-ENCODED STRING of the x402 payment payload
       // - requirements: PaymentRequirements object
       // 
       // The FacilitatorClient will internally:
-      // 1. Convert paymentPayload to JSON and base64-encode it as the header
+      // 1. Base64-decode the header to get the x402 payload object
       // 2. Construct the request as { paymentPayload, paymentRequirements }
       // 3. Send to https://facilitator.payai.network/verify
       
@@ -148,18 +148,22 @@ export class PayAISdkFacilitator {
         payload: paymentPayload.payload  // Contains the transaction
       };
       
-      console.log(`   Passing x402 payload object (not base64)`);
+      // JSON stringify and BASE64 encode (FacilitatorClient expects this format)
+      const paymentHeaderJson = JSON.stringify(x402Payload);
+      const paymentHeaderBase64 = Buffer.from(paymentHeaderJson).toString('base64');
+      
       console.log(`   X402 Payload keys:`, Object.keys(x402Payload).join(', '));
+      console.log(`   Payment header (base64): ${paymentHeaderBase64.substring(0, 80)}...`);
       console.log(`   SDK Requirements:`, JSON.stringify(sdkRequirements, null, 2).substring(0, 400));
       
       // Use PayAI FacilitatorClient's verifyPayment method
-      // Pass the payload object directly - FacilitatorClient will handle encoding
+      // Pass the BASE64-encoded header string
       console.log(`📤 Calling this.handler.verifyPayment()...`);
       console.log(`   Handler type:`, typeof this.handler);
       console.log(`   Handler.verifyPayment type:`, typeof this.handler.verifyPayment);
-      console.log(`   Arguments: (x402Payload object, sdkRequirements object)`);
+      console.log(`   Arguments: (base64PaymentHeader: string, sdkRequirements: object)`);
       
-      const result = await this.handler.verifyPayment(x402Payload, sdkRequirements);
+      const result = await this.handler.verifyPayment(paymentHeaderBase64, sdkRequirements);
       console.log(`   PayAI SDK result type:`, typeof result);
       console.log(`   PayAI SDK raw result:`, JSON.stringify(result, null, 2));
 
@@ -255,7 +259,7 @@ export class PayAISdkFacilitator {
       }
 
       // CRITICAL: Create the x402 payment payload (full envelope) - same as verify
-      // Pass the object directly - FacilitatorClient will handle encoding
+      // Must be BASE64-encoded string for FacilitatorClient
       const x402Payload = {
         x402Version: paymentPayload.x402Version || 1,
         scheme: paymentPayload.scheme,
@@ -263,13 +267,17 @@ export class PayAISdkFacilitator {
         payload: paymentPayload.payload  // Contains the transaction
       };
 
+      // JSON stringify and BASE64 encode (FacilitatorClient expects this format)
+      const paymentHeaderJson = JSON.stringify(x402Payload);
+      const paymentHeaderBase64 = Buffer.from(paymentHeaderJson).toString('base64');
+
       console.log(`🌐 Calling PayAI FacilitatorClient.settlePayment method...`);
-      console.log(`   Passing x402 payload object (not base64)`);
+      console.log(`   Passing base64-encoded payment header string`);
       console.log(`   SDK Requirements:`, JSON.stringify(sdkRequirements, null, 2).substring(0, 400));
 
       // Use PayAI FacilitatorClient's settlePayment method
-      // Pass the payload object directly - FacilitatorClient will handle encoding
-      const sdkResult = await this.handler.settlePayment(x402Payload, sdkRequirements);
+      // Pass the BASE64-encoded header string
+      const sdkResult = await this.handler.settlePayment(paymentHeaderBase64, sdkRequirements);
 
       console.log(`   PayAI Network raw settlement result:`, sdkResult);
 
