@@ -7,9 +7,10 @@
 import { SolanaFacilitator } from './solana-facilitator';
 import { PayAISdkFacilitator } from './payai-sdk-facilitator';
 import { CodeNutFacilitator } from './codenut-facilitator';
+import { CorbitsFacilitator } from './corbits-facilitator';
 import axios from 'axios';
 
-export type FacilitatorType = 'x402labs' | 'payai' | 'codenut' | 'auto';
+export type FacilitatorType = 'x402labs' | 'payai' | 'codenut' | 'corbits' | 'auto';
 
 export interface FacilitatorConfig {
   type: FacilitatorType;
@@ -22,9 +23,12 @@ export interface FacilitatorConfig {
   // CodeNut config
   codenutFacilitatorUrl?: string;
   codenutNetwork?: 'base' | 'solana';
+  // Corbits config
+  corbitsFacilitatorUrl?: string;
+  corbitsNetwork?: 'solana' | 'base' | 'polygon' | 'ethereum';
   // Fallback options
   enableFallback?: boolean;
-  fallbackType?: 'x402labs' | 'payai' | 'codenut';
+  fallbackType?: 'x402labs' | 'payai' | 'codenut' | 'corbits';
 }
 
 export interface VerifyResult {
@@ -184,6 +188,66 @@ export class CodeNutFacilitatorWrapper implements IFacilitator {
 }
 
 /**
+ * Corbits Facilitator Wrapper
+ */
+export class CorbitsFacilitatorWrapper implements IFacilitator {
+  name = 'Corbits';
+  type: FacilitatorType = 'corbits';
+  private facilitator: CorbitsFacilitator;
+
+  constructor(config: FacilitatorConfig) {
+    this.facilitator = new CorbitsFacilitator({
+      facilitatorUrl: config.corbitsFacilitatorUrl || 'https://facilitator.corbits.dev',
+      network: config.corbitsNetwork || 'solana',
+    });
+    console.log(`✅ Corbits Facilitator initialized`);
+  }
+
+  isAvailable(): boolean {
+    return this.facilitator.isAvailable();
+  }
+
+  async verifyPayment(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
+    try {
+      console.log(`🔐 CorbitsFacilitator: Starting verification...`);
+      const result = await this.facilitator.verifyPayment(paymentPayload, paymentRequirements);
+      console.log(`🔐 CorbitsFacilitator: Verification result:`, { valid: result.valid, error: result.error });
+      
+      return {
+        valid: result.valid,
+        isValid: result.valid,
+        buyerPubkey: result.buyerPubkey || result.payer,
+        payer: result.payer || result.buyerPubkey,
+        error: result.error,
+      };
+    } catch (err: any) {
+      console.error(`❌ CorbitsFacilitator: Verification exception:`, err.message);
+      return { valid: false, error: err.message };
+    }
+  }
+
+  async settlePayment(paymentPayload: any, paymentRequirements: any): Promise<SettleResult> {
+    try {
+      console.log(`💰 CorbitsFacilitator: Starting settlement...`);
+      const result = await this.facilitator.settlePayment(paymentPayload, paymentRequirements);
+      console.log(`💰 CorbitsFacilitator: Settlement result:`, { settled: result.settled, txHash: result.txHash });
+      
+      return {
+        settled: result.settled,
+        success: result.settled,
+        txHash: result.txHash || result.transaction,
+        transaction: result.transaction || result.txHash,
+        error: result.error,
+        errorReason: result.errorReason,
+      };
+    } catch (err: any) {
+      console.error(`❌ CorbitsFacilitator: Settlement exception:`, err.message);
+      return { settled: false, error: err.message };
+    }
+  }
+}
+
+/**
  * PayAI Facilitator Wrapper - Using Official x402-solana SDK
  */
 export class PayAIFacilitator implements IFacilitator {
@@ -309,6 +373,7 @@ export class FacilitatorManager {
   private primaryFacilitator: IFacilitator | null = null;
   private fallbackFacilitator: IFacilitator | null = null;
   private payaiFacilitator: PayAIFacilitator | null = null;
+  private corbitsFacilitator: CorbitsFacilitatorWrapper | null = null;
   private config: FacilitatorConfig;
 
   constructor(config: FacilitatorConfig) {
@@ -330,6 +395,22 @@ export class FacilitatorManager {
     }
 
     return this.payaiFacilitator;
+  }
+
+  private getOrCreateCorbitsFacilitator(): CorbitsFacilitatorWrapper {
+    if (this.primaryFacilitator?.type === 'corbits') {
+      return this.primaryFacilitator as CorbitsFacilitatorWrapper;
+    }
+
+    if (this.fallbackFacilitator?.type === 'corbits') {
+      return this.fallbackFacilitator as CorbitsFacilitatorWrapper;
+    }
+
+    if (!this.corbitsFacilitator) {
+      this.corbitsFacilitator = new CorbitsFacilitatorWrapper(this.config);
+    }
+
+    return this.corbitsFacilitator;
   }
 
   private initialize() {
@@ -361,6 +442,19 @@ export class FacilitatorManager {
         this.fallbackFacilitator = new SelfHostedFacilitator(this.config);
         } else if (fallbackType === 'payai') {
           this.fallbackFacilitator = this.getOrCreatePayAIFacilitator();
+        } else if (fallbackType === 'corbits') {
+          this.fallbackFacilitator = new CorbitsFacilitatorWrapper(this.config);
+        }
+      }
+    } else if (type === 'corbits') {
+      this.primaryFacilitator = new CorbitsFacilitatorWrapper(this.config);
+      if (enableFallback) {
+        if (fallbackType === 'x402labs') {
+          this.fallbackFacilitator = new SelfHostedFacilitator(this.config);
+        } else if (fallbackType === 'payai') {
+          this.fallbackFacilitator = this.getOrCreatePayAIFacilitator();
+        } else if (fallbackType === 'codenut') {
+          this.fallbackFacilitator = new CodeNutFacilitatorWrapper(this.config);
         }
       }
     } else if (type === 'auto') {
@@ -405,7 +499,7 @@ export class FacilitatorManager {
   async verifyPayment(
     paymentPayload: any, 
     paymentRequirements: any, 
-    forceFacilitator?: 'x402labs' | 'payai' | 'codenut'
+    forceFacilitator?: 'x402labs' | 'payai' | 'codenut' | 'corbits'
   ): Promise<VerifyResult & { facilitator: string }> {
     // If client forces a specific facilitator, try to honor it
     if (forceFacilitator === 'x402labs') {
@@ -471,6 +565,23 @@ export class FacilitatorManager {
       }
     }
     
+    if (forceFacilitator === 'corbits') {
+      if (this.primaryFacilitator?.type === 'corbits' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested Corbits facilitator');
+        const result = await this.primaryFacilitator.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.primaryFacilitator.name };
+      } else if (this.fallbackFacilitator?.type === 'corbits' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested Corbits facilitator (from fallback)');
+        const result = await this.fallbackFacilitator.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.fallbackFacilitator.name };
+      } else {
+        console.log('🎯 Using client-requested Corbits facilitator (standalone)');
+        const corbits = this.getOrCreateCorbitsFacilitator();
+        const result = await corbits.verifyPayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: corbits.name };
+      }
+    }
+    
     // Try primary
     if (this.primaryFacilitator?.isAvailable()) {
       const result = await this.primaryFacilitator.verifyPayment(paymentPayload, paymentRequirements);
@@ -501,7 +612,7 @@ export class FacilitatorManager {
   async settlePayment(
     paymentPayload: any, 
     paymentRequirements: any,
-    forceFacilitator?: 'x402labs' | 'payai' | 'codenut'
+    forceFacilitator?: 'x402labs' | 'payai' | 'codenut' | 'corbits'
   ): Promise<SettleResult & { facilitator: string }> {
     // If client forces a specific facilitator, try to honor it
     if (forceFacilitator === 'x402labs') {
@@ -564,6 +675,23 @@ export class FacilitatorManager {
           error: 'CodeNut facilitator not available',
           facilitator: 'codenut (unavailable)' 
         };
+      }
+    }
+    
+    if (forceFacilitator === 'corbits') {
+      if (this.primaryFacilitator?.type === 'corbits' && this.primaryFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested Corbits facilitator');
+        const result = await this.primaryFacilitator.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.primaryFacilitator.name };
+      } else if (this.fallbackFacilitator?.type === 'corbits' && this.fallbackFacilitator.isAvailable()) {
+        console.log('🎯 Using client-requested Corbits facilitator (from fallback)');
+        const result = await this.fallbackFacilitator.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: this.fallbackFacilitator.name };
+      } else {
+        console.log('🎯 Using client-requested Corbits facilitator (standalone)');
+        const corbits = this.getOrCreateCorbitsFacilitator();
+        const result = await corbits.settlePayment(paymentPayload, paymentRequirements);
+        return { ...result, facilitator: corbits.name };
       }
     }
     

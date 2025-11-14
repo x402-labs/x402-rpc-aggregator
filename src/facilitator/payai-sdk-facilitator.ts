@@ -81,8 +81,6 @@ export class PayAISdkFacilitator {
       try {
         if (paymentPayload.payload?.transaction) {
           const txBytes = Buffer.from(paymentPayload.payload.transaction, 'base64');
-          
-          // Try VersionedTransaction first (v0), then fall back to legacy Transaction
           let payerKey: any = null;
           try {
             const { VersionedTransaction } = require('@solana/web3.js');

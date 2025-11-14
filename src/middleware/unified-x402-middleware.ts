@@ -252,14 +252,17 @@ async function createX402Response(
     switch (chain) {
       case 'solana':
         // x402labs uses SOL (volatile, but that's the facilitator's choice)
-        // PayAI and CodeNut use USDC (1:1 with USD - accurate pricing)
+        // PayAI, CodeNut, and Corbits use USDC (1:1 with USD - accurate pricing)
         const asset = facilitatorType === 'x402labs' ? 'SOL' : 'USDC';
         return { network: 'solana', asset };
       case 'ethereum':
         return { network: 'ethereum', asset: 'ETH' };
       case 'base':
-        // CodeNut and others typically use USDC on Base
+        // CodeNut, Corbits, and others typically use USDC on Base
         return { network: 'base', asset: 'USDC' };
+      case 'polygon':
+        // Corbits supports USDC on Polygon
+        return { network: 'polygon', asset: 'USDC' };
       default:
         return { network: chain, asset: 'USDC' };
     }

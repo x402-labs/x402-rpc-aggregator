@@ -448,8 +448,9 @@
           <p class="text-xs text-gray-400 mb-3 italic">Choose the chain. Solana supports CodeNut, PayAI, or x402labs. Base currently routes through CodeNut.</p>
           <label class="block text-sm font-medium text-gray-300 mb-2">Payment Facilitator</label>
           <select id="facilitator" class="w-full p-2 bg-gray-700 rounded mb-1">
-            <option value="codenut"> CodeNut Pay - USDC (Solana/Base) - Zero-config, multi-chain</option>
-            <option value="payai">🌐 PayAI Network - USDC (Solana) - Fast settlement, no fees</option>
+            <option value="codenut">CodeNut Pay - USDC (Solana/Base)</option>
+            <option value="corbits">Corbits - USDC (Solana/Base/Polygon)</option>
+            <option value="payai">PayAI Network - USDC (Solana)</option>
             <option value="x402labs" selected> x402labs - SOL (Solana) - Self-hosted, full control</option>
           </select>
           <p id="facilitator-help" class="text-xs text-gray-400 mb-3 italic">Choose how you want to pay: USDC (CodeNut/PayAI) or SOL (x402labs)</p>
@@ -551,13 +552,13 @@
     };
     
     const FACILITATORS_BY_CHAIN = {
-      solana: ['codenut', 'payai', 'x402labs'],
-      base: ['codenut'],
+      solana: ['codenut', 'corbits', 'payai', 'x402labs'],
+      base: ['codenut', 'corbits'],
     };
     
     const FACILITATOR_NOTES = {
-      solana: 'Use SOL with x402labs or USDC via CodeNut / PayAI on Solana.',
-      base: 'Base payments settle via CodeNut Pay (USDC) and prompt an EVM wallet such as MetaMask.',
+      solana: 'Use SOL with x402labs or USDC via CodeNut / Corbits / PayAI on Solana.',
+      base: 'Base payments settle via CodeNut or Corbits (USDC) and prompt an EVM wallet such as MetaMask.',
     };
     
     walletInfo.innerHTML = `<span class="text-xs text-gray-400">Connect Phantom to explore Solana payments. No Phantom? Install it or switch the network selector to Base to try the CodeNut + MetaMask flow.</span>`;
@@ -696,8 +697,9 @@
           facilitatorSelect.value = 'x402labs';
           console.log('💡 Auto-selected x402labs (you have SOL but no USDC)');
         } else if (balanceCheck.usdcSufficient && !balanceCheck.solSufficient) {
-            facilitatorSelect.value = 'codenut';
-            console.log('💡 Auto-selected CodeNut (you have USDC but no SOL)');
+            // Prefer Corbits for USDC (multi-chain support)
+            facilitatorSelect.value = 'corbits';
+            console.log('💡 Auto-selected Corbits (you have USDC but no SOL)');
         }
         }
         updateFacilitatorOptions(chainSelect.value);
@@ -775,8 +777,9 @@
       
       const balanceCheck = await checkBalance(wallet);
       
-      if ((facilitator === 'payai' || facilitator === 'codenut') && !balanceCheck.usdcSufficient) {
-        alert(`⚠️ Warning: You selected ${facilitator === 'codenut' ? 'CodeNut' : 'PayAI'} (USDC) but have insufficient USDC.\n\nRecommendation: Use x402labs (SOL) instead or acquire USDC before proceeding.`);
+      if ((facilitator === 'payai' || facilitator === 'codenut' || facilitator === 'corbits') && !balanceCheck.usdcSufficient) {
+        const facName = facilitator === 'codenut' ? 'CodeNut' : facilitator === 'corbits' ? 'Corbits' : 'PayAI';
+        alert(`⚠️ Warning: You selected ${facName} (USDC) but have insufficient USDC.\n\nRecommendation: Use x402labs (SOL) instead or acquire USDC before proceeding.`);
       } else if (facilitator === 'x402labs' && !balanceCheck.solSufficient) {
         alert('⚠️ Warning: You selected x402labs (SOL) but have insufficient SOL.\n\nRecommendation: Use CodeNut or PayAI (USDC) instead if you have USDC.');
       }
@@ -855,7 +858,12 @@
             <p class="text-orange-200 text-sm mb-2">Amount: <strong>${displayAmount}</strong></p>
             <p class="text-orange-200 text-xs mb-1">${usdValue}</p>
             <p class="text-orange-200 text-sm mb-2">Provider: ${paymentDetails.extra?.provider || 'Best Available'}</p>
-              <p class="text-orange-200 text-xs mb-3">Payment: ${facilitator === 'x402labs' ? 'SOL (x402labs)' : facilitator === 'codenut' ? 'USDC (CodeNut)' : 'USDC (PayAI Network)'}</p>
+              <p class="text-orange-200 text-xs mb-3">Payment: ${
+                facilitator === 'x402labs' ? 'SOL (x402labs)' : 
+                facilitator === 'codenut' ? 'USDC (CodeNut)' : 
+                facilitator === 'corbits' ? 'USDC (Corbits)' : 
+                'USDC (PayAI Network)'
+              }</p>
             <button onclick="payNow()" class="mt-3 w-full px-4 py-2 bg-white text-purple-900 font-bold rounded-lg hover:bg-purple-100">
                 💰 Pay Now
             </button>
@@ -1083,6 +1091,134 @@
         const facilitator = facilitatorSelect.value;
         const { Transaction, PublicKey, SystemProgram } = window.solanaWeb3;
 
+        // === CORBITS (USDC on Solana/Base/Polygon) ===
+        // Corbits 'exact' scheme requires ComputeBudget + TransferChecked instructions
+        // Reference: https://github.com/faremeter/faremeter/blob/main/packages/payment-solana/src/exact/verify.ts
+        if (facilitator === 'corbits') {
+          console.log('⚡ Using Corbits facilitator (USDC - multi-chain)');
+          console.log('   Building USDC transfer transaction with ComputeBudget...');
+          
+          const recipient = new PublicKey(paymentDetails.payTo);
+          const amountBaseUnits = parseInt(paymentDetails.maxAmountRequired, 10);
+          
+          console.log('   Amount (micro-USDC):', amountBaseUnits);
+          console.log('   Recipient:', recipient.toBase58());
+          
+          const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+          const sourceATA = await window.splToken.getAssociatedTokenAddress(usdcMint, wallet.publicKey);
+          
+          // Check if user's USDC account exists
+          const accountInfo = await fetch(SOLANA_RPC_PROXY, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'getAccountInfo',
+              params: [sourceATA.toBase58(), { encoding: 'base64' }]
+            })
+          }).then(r => r.json());
+          
+          if (!accountInfo.result?.value) {
+            throw new Error('No USDC account found. Please create a USDC account first or acquire some USDC.');
+          }
+          
+          const destinationAccount = await window.splToken.getAssociatedTokenAddress(usdcMint, recipient);
+          
+          // CRITICAL: Corbits requires ComputeBudget instructions
+          // From verify.ts: expects 3 or 4 instructions with ComputeBudget at positions 0 and 1
+          const tx = new Transaction();
+          
+          // Instruction 0: ComputeBudgetProgram.setComputeUnitLimit
+          tx.add(window.splToken.createComputeUnitLimitInstruction(50000));
+          
+          // Instruction 1: ComputeBudgetProgram.setComputeUnitPrice
+          tx.add(window.splToken.createComputeUnitPriceInstruction(1));
+          
+          // Instruction 2: TransferChecked
+          tx.add(
+            window.splToken.createTransferCheckedInstruction(
+              sourceATA,
+              usdcMint,
+              destinationAccount,
+              wallet.publicKey,
+              amountBaseUnits,
+              6  // USDC decimals
+            )
+          );
+          
+          console.log('   ✅ Added ComputeBudget instructions (required by Corbits)');
+          console.log('   Instructions count:', 3);
+          
+          // Get blockhash
+          const response = await fetch(SOLANA_RPC_PROXY, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'getLatestBlockhash',
+              params: []
+            })
+          });
+          const { result } = await response.json();
+          tx.recentBlockhash = result.value.blockhash;
+          
+          // CRITICAL: For Corbits, feePayer must be THEIR facilitator wallet
+          // From /supported: "feePayer": "AepWpq3GQwL8CeKMtZyKtKPa7W91Coygh3ropAJapVdU"
+          // User signs as transfer authority, Corbits adds fee payer signature
+          const corbitsFeePayer = paymentDetails.extra?.feePayer || 'AepWpq3GQwL8CeKMtZyKtKPa7W91Coygh3ropAJapVdU';
+          tx.feePayer = new PublicKey(corbitsFeePayer);
+          
+          console.log('   Fee payer (Corbits):', corbitsFeePayer);
+          console.log('   User wallet:', wallet.publicKey.toBase58());
+          
+          // Sign with user wallet (partial signature - user is not fee payer)
+          const signed = await wallet.signTransaction(tx);
+          
+          // Serialize as partial signature (not all signatures present)
+          let serialized;
+          try {
+            serialized = signed.serialize({ requireAllSignatures: false });
+          } catch (err) {
+            // Fallback for older @solana/web3.js versions
+            serialized = signed.serialize();
+          }
+          const txBase64 = btoa(String.fromCharCode.apply(null, serialized));
+          
+          console.log('   Transaction built:', {
+            instructions: signed.instructions.length,
+            feePayer: signed.feePayer.toBase58(),
+            size: serialized.length
+          });
+          
+          return {
+            paymentPayload: {
+              x402Version: 1,
+              scheme: 'exact',
+              network: 'solana',
+              payload: {
+                transaction: txBase64
+              }
+            },
+            paymentRequirements: {
+              scheme: 'exact',
+              network: 'solana',
+              maxAmountRequired: String(amountBaseUnits),
+              asset: usdcMint.toBase58(),  // Send as string (not object)
+              payTo: recipient.toBase58(),
+              resource: paymentDetails.resource || 'https://x402labs.cloud/rpc',
+              description: paymentDetails.description || 'x402 RPC payment',
+              extra: {
+                // CRITICAL: From verify.ts, Corbits validates tx.feePayer === extra.feePayer
+                // We set tx.feePayer = Corbits facilitator, so send Corbits feePayer here
+                feePayer: corbitsFeePayer
+              }
+            },
+            facilitator: 'corbits'
+          };
+        }
+        
         // === CODENUT PAY (USDC on Solana/Base) ===
         // Use same simple pattern as x402labs but with USDC instead of SOL
         if (facilitator === 'codenut') {

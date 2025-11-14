@@ -9,9 +9,9 @@ A RPC aggregator that intelligently routes blockchain RPC calls across multiple 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Multi-provider routing** | ✅ Done | Triton, Helius, QuickNode, Alchemy, Infura |
-| **x402 micropayments** | ✅ Done | USDC on Solana & Base (official PayAI SDK) |
+| **x402 micropayments** | ✅ Done | USDC/SOL on Solana, Base, Polygon (multi-chain) |
 | **x402scan compliant** | ✅ Done | Compatible with [x402scan.com](https://www.x402scan.com/resources/register) |
-| **Triple facilitators** | ✅ Done | CodeNut (USDC) OR x402labs (SOL) OR PayAI (USDC) - choose freely |
+| **Four facilitators** | ✅ Done | Corbits (multi-chain) OR CodeNut (USDC) OR x402labs (SOL) OR PayAI (USDC) |
 | **Intelligent routing** | ✅ Done | Cost, latency, priority, round-robin strategies |
 | **AI agent compatible** | ✅ Done | No login, autonomous payments |
 | **Batch payments** | ✅ Done | $0.08-0.15 for 1K calls (volume discounts) |
@@ -64,10 +64,11 @@ PORT=3000
 ```
 
 **Facilitator Options**:
-- **`codenut`**: Use [CodeNut Pay](https://codenut.ai/x402) facilitator (USDC on Solana/Base, zero-config, fast settlement) ⭐ **New!**
+- **`corbits`**: Use [Corbits](https://corbits.dev) facilitator (USDC on Solana/Base/Polygon, multi-chain, ~100ms settlement) ⭐ **New!**
+- **`codenut`**: Use [CodeNut Pay](https://codenut.ai/x402) facilitator (USDC on Solana/Base, zero-config, fast settlement)
 - **`payai`**: Use [PayAI Network](https://payai.network) facilitator (USDC, zero network fees, <1s settlement)
 - **`x402labs`**: Use x402labs self-hosted facilitator (SOL, full control)
-- **`auto`**: Try x402labs first, then CodeNut, then PayAI (recommended for production)
+- **`auto`**: Try x402labs first, then Corbits, then CodeNut (recommended for production)
 
 
 
@@ -487,9 +488,46 @@ print(f"Current slot: {result['result']}")
 }
 ```
 
-- Build transactions with PayAI’s `x402-solana` SDK (v0.1.4).
+- Build transactions with PayAI's `x402-solana` SDK (v0.1.4).
 - Instruction order: `ComputeBudget.limit(40000)` → `ComputeBudget.price(1)` → `TransferChecked` (no inline ATA creation).
 - Serialize with `requireAllSignatures=false`; PayAI completes signatures and broadcasts.
+
+#### Corbits (USDC on Solana/Base/Polygon)
+
+```json
+{
+  "paymentPayload": {
+    "x402Version": 1,
+    "scheme": "exact",
+    "network": "solana",
+    "facilitator": "corbits",
+    "payload": {
+      "transaction": "AgAAAAABAAABo0..."  // base64, fee payer = Corbits facilitator
+    }
+  },
+  "paymentRequirements": {
+    "scheme": "exact",
+    "network": "solana",
+    "maxAmountRequired": "890880",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo": "wallet_address",
+    "resource": "https://x402labs.cloud/rpc",
+    "description": "RPC access",
+    "mimeType": "application/json",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+      "feePayer": "AepWpq3GQwL8CeKMtZyKtKPa7W91Coygh3ropAJapVdU"
+    }
+  }
+}
+```
+
+- Multi-chain support: Solana, Base, Polygon, and 15+ more chains
+- Instruction order: `ComputeBudget.limit(50000)` → `ComputeBudget.price(1)` → `TransferChecked`
+- Fee payer: Corbits facilitator wallet (from `/supported` endpoint)
+- Serialize with `requireAllSignatures=false`; Corbits adds facilitator signature
+- Settlement: Combined verify+settle via `/settle` endpoint (~100ms on Solana)
+- Note: Corbits recommends NOT using `/verify` endpoint - use `/settle` directly
 
 ## 🔧 Configuration
 
@@ -588,6 +626,7 @@ x402-rpc-aggregator/
 │   ├── router.ts                # Intelligent routing logic
 │   ├── facilitator/
 │   │   ├── facilitator-manager.ts   # Orchestrates facilitator selection
+│   │   ├── corbits-facilitator.ts   # Corbits multi-chain verify/settle
 │   │   ├── codenut-facilitator.ts   # CodeNut verify/settle client
 │   │   ├── payai-sdk-facilitator.ts # PayAI SDK integration
 │   │   └── solana-facilitator.ts    # Self-hosted SOL settlement
@@ -608,13 +647,15 @@ x402-rpc-aggregator/
 
 ## Roadmap
 
+- [x] Multi-chain facilitator support (Corbits - Solana/Base/Polygon)
 - [ ] Redis/PostgreSQL for batch payment persistence
 - [ ] WebSocket support for real-time data
-- [ ] More chains: Polygon, Avalanche, Arbitrum
+- [ ] More EVM chains: Arbitrum, Avalanche via Corbits
 - [ ] Advanced analytics dashboard
 - [ ] Provider performance metrics API
 - [ ] Anchor program for trustless Solana settlements
 - [ ] CLI tool for developers
+- [ ] Faremeter SDK integration for automatic payment handling
 
 ## 🤝 Contributing
 
@@ -632,6 +673,9 @@ MIT © x402-labs
 ## 🔗 Links
 
 - **Live Demo**: https://x402labs.cloud/
+- **Corbits**: https://corbits.dev (Multi-chain facilitator)
+- **CodeNut Pay**: https://codenut.ai/x402
+- **PayAI Network**: https://payai.network
 - **Triton.one**: https://triton.one
 - **x402 Protocol**: https://github.com/x402-protocol
 - **Support**: GitHub Issues
