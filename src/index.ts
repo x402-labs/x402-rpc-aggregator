@@ -304,6 +304,40 @@ app.post('/rpc', x402Middleware, async (req: any, res: Response) => {
       return res.status(400).json({ error: err.message });
     }
 
+    // === ENHANCE PARAMS FOR SOLANA VERSIONED TRANSACTIONS ===
+    let enhancedParams = params;
+    
+    if (chain === 'solana') {
+      // Methods that might encounter versioned transactions
+      const versionedTxMethods = ['getTransaction', 'getBlock'];
+      
+      if (versionedTxMethods.includes(method)) {
+        if (params.length === 1) {
+          // Only signature/slot provided, add config with maxSupportedTransactionVersion
+          enhancedParams = [
+            params[0],
+            {
+              maxSupportedTransactionVersion: 0,
+              encoding: 'json',
+            },
+          ];
+          console.log(`🔧 Enhanced ${method} params to support v0 transactions`);
+        } else if (params.length === 2 && typeof params[1] === 'object') {
+          // Config object exists, ensure maxSupportedTransactionVersion is set
+          if (!params[1].maxSupportedTransactionVersion) {
+            enhancedParams = [
+              params[0],
+              {
+                ...params[1],
+                maxSupportedTransactionVersion: 0,
+              },
+            ];
+            console.log(`🔧 Added maxSupportedTransactionVersion to ${method} config`);
+          }
+        }
+      }
+    }
+
     // === FORWARD RPC CALL ===
     try {
       const rpcResponse = await fetch(provider.url, {
@@ -313,7 +347,7 @@ app.post('/rpc', x402Middleware, async (req: any, res: Response) => {
           jsonrpc: '2.0',
           id: 1,
           method,
-          params,
+          params: enhancedParams,
         }),
       });
 

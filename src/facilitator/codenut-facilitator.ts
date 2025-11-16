@@ -59,7 +59,7 @@ export class CodeNutFacilitator {
   constructor(config: CodeNutFacilitatorConfig = {}) {
     this.baseUrl = config.facilitatorUrl || 'https://facilitator.codenut.ai';
     this.network = config.network || 'base'; // Default to Base
-    this.timeout = config.timeout || 20000; // default to 20 second timeout (settlement can take longer)
+    this.timeout = config.timeout || 60000; // 60 second timeout for settlement (broadcast + confirmation)
 
     console.log(`✅ CodeNut Facilitator initialized`);
     console.log(`   Base URL: ${this.baseUrl}`);
