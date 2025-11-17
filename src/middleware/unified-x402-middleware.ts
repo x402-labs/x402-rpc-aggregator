@@ -14,6 +14,8 @@ import { IntelligentRouter } from '../router';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { BatchPayment, X402Response, X402Accepts, RPCProvider } from '../types';
 import { jupiterOracle } from '../pricing/jupiter-oracle';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 export interface X402Request extends Request {
   x402?: {
@@ -28,6 +30,123 @@ export interface X402Request extends Request {
 
 // Batch payment storage (in production, use Redis or database)
 const batchPayments = new Map<string, BatchPayment>();
+
+// Solana connection for token account queries (lazy initialization)
+let solanaConnection: Connection | null = null;
+
+function getSolanaConnection(): Connection {
+  if (!solanaConnection) {
+    solanaConnection = new Connection(
+      process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
+      'confirmed'
+    );
+  }
+  return solanaConnection;
+}
+
+/**
+ * Detect off-curve address and find token account
+ * Returns token account address if found, undefined otherwise
+ */
+async function findTokenAccountForOffCurveAddress(
+  address: string,
+  mint: PublicKey,
+  connection: Connection
+): Promise<string | undefined> {
+  try {
+    const ownerPubkey = new PublicKey(address);
+    
+    // Try to derive ATA - if it throws TokenOwnerOffCurveError, address is off-curve
+    try {
+      await getAssociatedTokenAddress(mint, ownerPubkey);
+      // If successful, address is on-curve - no token account needed
+      return undefined;
+    } catch (error: any) {
+      // Check if it's an off-curve error
+      if (error?.name === 'TokenOwnerOffCurveError' || 
+          error?.message?.includes('off-curve') ||
+          error?.message?.includes('TokenOwnerOffCurve')) {
+        // Address is off-curve - find existing token account
+        console.log(`   🔍 Address ${address.substring(0, 8)}... is off-curve, searching for token account...`);
+        
+        try {
+          // Use Connection RPC method to get token accounts
+          const tokenAccounts = await connection.getTokenAccountsByOwner(
+            ownerPubkey,
+            {
+              mint: mint
+            }
+          );
+          
+          if (tokenAccounts.value.length > 0) {
+            const tokenAccount = tokenAccounts.value[0].pubkey.toBase58();
+            console.log(`   ✅ Found token account: ${tokenAccount}`);
+            return tokenAccount;
+          } else {
+            console.log(`   ⚠️  No token account found for off-curve address`);
+            return undefined;
+          }
+        } catch (queryError: any) {
+          console.warn(`   ⚠️  Error querying token accounts: ${queryError.message}`);
+          return undefined;
+        }
+      }
+      // Other errors - re-throw
+      throw error;
+    }
+  } catch (error: any) {
+    console.warn(`   ⚠️  Error checking address ${address}: ${error.message}`);
+    return undefined;
+  }
+}
+
+/**
+ * Enrich payment details with token accounts for off-curve addresses
+ */
+async function enrichWithTokenAccounts(
+  payTo: string,
+  asset: string,
+  chain: string,
+  payerAddress?: string
+): Promise<Record<string, any>> {
+  const extra: Record<string, any> = {};
+  
+  // Only for Solana USDC payments
+  if (chain !== 'solana' || (asset !== 'USDC' && asset !== 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')) {
+    return extra;
+  }
+  
+  const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+  const connection = getSolanaConnection();
+  
+  // Check payTo (recipient) address
+  console.log(`🔍 Checking payTo address for token account: ${payTo.substring(0, 8)}...`);
+  const recipientTokenAccount = await findTokenAccountForOffCurveAddress(
+    payTo,
+    USDC_MINT,
+    connection
+  );
+  if (recipientTokenAccount) {
+    extra.recipientTokenAccount = recipientTokenAccount;
+    console.log(`   ✅ Added recipientTokenAccount to 402 response`);
+  }
+  
+  // Check payer address (if provided in request)
+  if (payerAddress) {
+    console.log(`🔍 Checking payer address for token account: ${payerAddress.substring(0, 8)}...`);
+    const payerTokenAccount = await findTokenAccountForOffCurveAddress(
+      payerAddress,
+      USDC_MINT,
+      connection
+    );
+    if (payerTokenAccount) {
+      extra.payerTokenAccount = payerTokenAccount;
+      console.log(`   ✅ Added payerTokenAccount to 402 response`);
+    }
+  }
+  
+  return extra;
+}
 
 /**
  * Create unified x402 middleware
@@ -82,7 +201,7 @@ export function createUnifiedX402Middleware(
             console.log(`🎫 Batch payment: ${batch.callsRemaining}/${batch.totalCalls} remaining`);
             return next();
           } else {
-            const x402Response = await createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
+            const x402Response = await createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator, req);
             return res.status(402).json({
               ...x402Response,
               error: 'Batch expired or depleted',
@@ -232,7 +351,8 @@ async function createX402Response(
   chain: string,
   resource: string,
   facilitatorManager: FacilitatorManager,
-  clientFacilitator?: string
+  clientFacilitator?: string,
+  req?: Request
 ): Promise<X402Response> {
   const facilitatorInfo = facilitatorManager.getInfo();
   
@@ -344,6 +464,48 @@ async function createX402Response(
     }
   };
 
+  // Get payTo address
+  const payToAddress = process.env.X402_WALLET || 'WALLET_NOT_CONFIGURED';
+  
+  // Extract payer address from request (if available)
+  // Could be from x-payer-address header, payment payload, or request body
+  let payerAddress: string | undefined = undefined;
+  
+  if (req) {
+    // Try header first
+    payerAddress = req.headers['x-payer-address'] as string | undefined;
+    
+    // Try request body
+    if (!payerAddress && req.body) {
+      payerAddress = req.body.payerAddress || req.body.payer;
+    }
+    
+    // Try to extract from payment payload if present (for retry scenarios)
+    if (!payerAddress && req.headers['x402-payment']) {
+      try {
+        const paymentHeader = req.headers['x402-payment'] as string;
+        const paymentData = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
+        if (paymentData.paymentPayload?.signedIntent?.publicKey) {
+          payerAddress = paymentData.paymentPayload.signedIntent.publicKey;
+        } else if (paymentData.paymentPayload?.payload?.transaction) {
+          // Try to extract from transaction (would need deserialization)
+          // Skip for now - too complex and may not be available
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+  }
+  
+  // Enrich with token accounts for off-curve addresses (async)
+  console.log(`🔍 Enriching 402 response with token accounts for off-curve addresses...`);
+  const tokenAccountExtra = await enrichWithTokenAccounts(
+    payToAddress,
+    asset,
+    chain,
+    payerAddress
+  );
+  
   const accepts: X402Accepts = {
     scheme: 'exact',
     network,
@@ -351,7 +513,7 @@ async function createX402Response(
     resource: `https://x402labs.cloud${resource}`, // Full URL required by x402scan
     description: `RPC access via ${provider.name} for ${chain}`,
     mimeType: 'application/json',
-    payTo: process.env.X402_WALLET || 'WALLET_NOT_CONFIGURED',
+    payTo: payToAddress,
     maxTimeoutSeconds: 30,
     asset,
     
@@ -439,6 +601,8 @@ async function createX402Response(
           savings: `${(((provider.costPerCall * provider.batchCost.calls - provider.batchCost.price) / (provider.costPerCall * provider.batchCost.calls)) * 100).toFixed(1)}%`,
         },
       }),
+      // ⭐ Token accounts for off-curve addresses (if detected)
+      ...tokenAccountExtra,
     },
   };
 
