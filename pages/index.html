@@ -674,8 +674,21 @@
 
   <!-- Hero Section -->
   <section class="hero">
-    <div style="display: inline-block; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); padding: 10px 24px; border-radius: 20px; margin-bottom: 24px; font-size: 0.875rem; color: #6366f1; font-weight: 600; letter-spacing: 0.5px;">
+    <div style="display: inline-block; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); padding: 10px 24px; border-radius: 20px; margin-bottom: 16px; font-size: 0.875rem; color: #6366f1; font-weight: 600; letter-spacing: 0.5px;">
       INFRASTRUCTURE FOR AUTONOMOUS AI AGENTS
+    </div>
+    
+    <!-- Contract Address with Copy Button -->
+    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; font-size: 0.875rem;">
+      <span style="color: #64748b; font-weight: 500;">CA:</span>
+      <code id="contract-address" style="color: #0E4D81; font-weight: 600; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">7X3JdDswsL4DS6db22jfL1gZsU8MyEj6WEbLsWM9pump</code>
+      <button id="copy-contract-btn" onclick="copyContractAddress()" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; color: #6366f1; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <span id="copy-text">Copy</span>
+      </button>
     </div>
     
     <h1 style="font-size: 3.5rem; line-height: 1.2; margin-bottom: 1rem;">
@@ -1099,6 +1112,38 @@ console.<span style="color: #a78bfa;">log</span>(<span style="color: #22c55e;">'
 
   <!-- Real-Time Pricing Widget -->
   <script src="/shared-pricing-widget.js"></script>
+
+  <!-- Copy Contract Address Function -->
+  <script>
+    function copyContractAddress() {
+      const contractAddress = '7X3JdDswsL4DS6db22jfL1gZsU8MyEj6WEbLsWM9pump';
+      const copyBtn = document.getElementById('copy-contract-btn');
+      const copyText = document.getElementById('copy-text');
+      
+      navigator.clipboard.writeText(contractAddress).then(() => {
+        // Update button text to show success
+        const originalText = copyText.textContent;
+        copyText.textContent = 'Copied!';
+        copyBtn.style.background = 'rgba(34, 197, 94, 0.1)';
+        copyBtn.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+        copyBtn.style.color = '#22c55e';
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+          copyText.textContent = originalText;
+          copyBtn.style.background = 'rgba(99, 102, 241, 0.1)';
+          copyBtn.style.borderColor = 'rgba(99, 102, 241, 0.3)';
+          copyBtn.style.color = '#6366f1';
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        copyText.textContent = 'Error';
+        setTimeout(() => {
+          copyText.textContent = 'Copy';
+        }, 2000);
+      });
+    }
+  </script>
 
   <!-- Live Stats JavaScript -->
   <script>
