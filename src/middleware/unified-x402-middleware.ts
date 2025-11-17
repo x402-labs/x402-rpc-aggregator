@@ -529,10 +529,16 @@ async function createX402Response(
   if (req) {
     // Try header first
     payerAddress = req.headers['x-payer-address'] as string | undefined;
+    if (payerAddress) {
+      console.log(`📥 Extracted payer address from x-payer-address header: ${payerAddress.substring(0, 8)}...`);
+    }
     
     // Try request body
     if (!payerAddress && req.body) {
       payerAddress = req.body.payerAddress || req.body.payer;
+      if (payerAddress) {
+        console.log(`📥 Extracted payer address from request body: ${payerAddress.substring(0, 8)}...`);
+      }
     }
     
     // Try to extract from payment payload if present (for retry scenarios)
@@ -542,6 +548,9 @@ async function createX402Response(
         const paymentData = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
         if (paymentData.paymentPayload?.signedIntent?.publicKey) {
           payerAddress = paymentData.paymentPayload.signedIntent.publicKey;
+          if (payerAddress) {
+            console.log(`📥 Extracted payer address from payment header: ${payerAddress.substring(0, 8)}...`);
+          }
         } else if (paymentData.paymentPayload?.payload?.transaction) {
           // Try to extract from transaction (would need deserialization)
           // Skip for now - too complex and may not be available
@@ -550,10 +559,17 @@ async function createX402Response(
         // Ignore parsing errors
       }
     }
+    
+    if (!payerAddress) {
+      console.log(`⚠️  No payer address found in request headers or body`);
+    }
   }
   
   // Enrich with token accounts for off-curve addresses (async)
   console.log(`🔍 Enriching 402 response with token accounts for off-curve addresses...`);
+  console.log(`   PayTo: ${payToAddress.substring(0, 8)}...`);
+  console.log(`   Payer: ${payerAddress ? payerAddress.substring(0, 8) + '...' : 'NOT PROVIDED'}`);
+  console.log(`   Asset: ${asset}, Chain: ${chain}`);
   let tokenAccountExtra: Record<string, any> = {};
   try {
     tokenAccountExtra = await enrichWithTokenAccounts(
@@ -564,12 +580,14 @@ async function createX402Response(
     );
     if (Object.keys(tokenAccountExtra).length > 0) {
       console.log(`   ✅ Token account enrichment complete:`, Object.keys(tokenAccountExtra));
+      console.log(`   📋 Token accounts added:`, tokenAccountExtra);
     } else {
       console.log(`   ℹ️  No token accounts to add (addresses are on-curve or not USDC)`);
     }
   } catch (error: any) {
     console.error(`   ❌ Error enriching token accounts: ${error.message}`);
     console.error(`   ⚠️  Continuing without token accounts - payment may fail for off-curve addresses`);
+    console.error(`   Stack:`, error.stack?.split('\n').slice(0, 3).join('\n'));
     // Continue with empty tokenAccountExtra
   }
   
