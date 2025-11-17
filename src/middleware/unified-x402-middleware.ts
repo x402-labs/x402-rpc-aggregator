@@ -121,27 +121,82 @@ async function enrichWithTokenAccounts(
   
   // Check payTo (recipient) address
   console.log(`🔍 Checking payTo address for token account: ${payTo.substring(0, 8)}...`);
-  const recipientTokenAccount = await findTokenAccountForOffCurveAddress(
-    payTo,
-    USDC_MINT,
-    connection
-  );
-  if (recipientTokenAccount) {
-    extra.recipientTokenAccount = recipientTokenAccount;
-    console.log(`   ✅ Added recipientTokenAccount to 402 response`);
+  
+  // First check if address is on-curve
+  let isPayToOnCurve = true;
+  try {
+    await getAssociatedTokenAddress(USDC_MINT, new PublicKey(payTo));
+  } catch (error: any) {
+    if (error?.name === 'TokenOwnerOffCurveError' || 
+        error?.message?.includes('off-curve') ||
+        error?.message?.includes('TokenOwnerOffCurve')) {
+      isPayToOnCurve = false;
+    }
+  }
+  
+  if (isPayToOnCurve) {
+    // On-curve: derive ATA address (even if it doesn't exist on-chain yet)
+    // The SDK can use this address and create it if needed
+    try {
+      const ataAddress = await getAssociatedTokenAddress(USDC_MINT, new PublicKey(payTo));
+      extra.recipientTokenAccount = ataAddress.toBase58();
+      console.log(`   ✅ PayTo is on-curve, using ATA: ${ataAddress.toBase58()}`);
+    } catch (error: any) {
+      console.warn(`   ⚠️  Could not derive ATA for payTo: ${error.message}`);
+    }
+  } else {
+    // Off-curve: find existing token account
+    const recipientTokenAccount = await findTokenAccountForOffCurveAddress(
+      payTo,
+      USDC_MINT,
+      connection
+    );
+    if (recipientTokenAccount) {
+      extra.recipientTokenAccount = recipientTokenAccount;
+      console.log(`   ✅ Added recipientTokenAccount to 402 response`);
+    } else {
+      console.warn(`   ⚠️  PayTo is off-curve but no token account found - payment may fail`);
+    }
   }
   
   // Check payer address (if provided in request)
   if (payerAddress) {
     console.log(`🔍 Checking payer address for token account: ${payerAddress.substring(0, 8)}...`);
-    const payerTokenAccount = await findTokenAccountForOffCurveAddress(
-      payerAddress,
-      USDC_MINT,
-      connection
-    );
-    if (payerTokenAccount) {
-      extra.payerTokenAccount = payerTokenAccount;
-      console.log(`   ✅ Added payerTokenAccount to 402 response`);
+    
+    // First check if address is on-curve
+    let isPayerOnCurve = true;
+    try {
+      await getAssociatedTokenAddress(USDC_MINT, new PublicKey(payerAddress));
+    } catch (error: any) {
+      if (error?.name === 'TokenOwnerOffCurveError' || 
+          error?.message?.includes('off-curve') ||
+          error?.message?.includes('TokenOwnerOffCurve')) {
+        isPayerOnCurve = false;
+      }
+    }
+    
+    if (isPayerOnCurve) {
+      // On-curve: derive ATA address (even if it doesn't exist on-chain yet)
+      try {
+        const ataAddress = await getAssociatedTokenAddress(USDC_MINT, new PublicKey(payerAddress));
+        extra.payerTokenAccount = ataAddress.toBase58();
+        console.log(`   ✅ Payer is on-curve, using ATA: ${ataAddress.toBase58()}`);
+      } catch (error: any) {
+        console.warn(`   ⚠️  Could not derive ATA for payer: ${error.message}`);
+      }
+    } else {
+      // Off-curve: find existing token account
+      const payerTokenAccount = await findTokenAccountForOffCurveAddress(
+        payerAddress,
+        USDC_MINT,
+        connection
+      );
+      if (payerTokenAccount) {
+        extra.payerTokenAccount = payerTokenAccount;
+        console.log(`   ✅ Added payerTokenAccount to 402 response`);
+      } else {
+        console.warn(`   ⚠️  Payer is off-curve but no token account found - payment may fail`);
+      }
     }
   }
   
@@ -214,7 +269,7 @@ export function createUnifiedX402Middleware(
 
       // === 402 CHALLENGE ===
       if (!paymentHeader) {
-        const x402Response = await createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator);
+        const x402Response = await createX402Response(provider, chain, req.originalUrl, facilitatorManager, clientFacilitator, req);
         return res.status(402).json(x402Response);
       }
 
@@ -499,12 +554,24 @@ async function createX402Response(
   
   // Enrich with token accounts for off-curve addresses (async)
   console.log(`🔍 Enriching 402 response with token accounts for off-curve addresses...`);
-  const tokenAccountExtra = await enrichWithTokenAccounts(
-    payToAddress,
-    asset,
-    chain,
-    payerAddress
-  );
+  let tokenAccountExtra: Record<string, any> = {};
+  try {
+    tokenAccountExtra = await enrichWithTokenAccounts(
+      payToAddress,
+      asset,
+      chain,
+      payerAddress
+    );
+    if (Object.keys(tokenAccountExtra).length > 0) {
+      console.log(`   ✅ Token account enrichment complete:`, Object.keys(tokenAccountExtra));
+    } else {
+      console.log(`   ℹ️  No token accounts to add (addresses are on-curve or not USDC)`);
+    }
+  } catch (error: any) {
+    console.error(`   ❌ Error enriching token accounts: ${error.message}`);
+    console.error(`   ⚠️  Continuing without token accounts - payment may fail for off-curve addresses`);
+    // Continue with empty tokenAccountExtra
+  }
   
   const accepts: X402Accepts = {
     scheme: 'exact',
