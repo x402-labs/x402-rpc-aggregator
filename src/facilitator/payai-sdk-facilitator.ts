@@ -333,6 +333,22 @@ export class PayAISdkFacilitator {
     return this.network;
   }
 
+  /**
+   * Get fee payer from facilitator
+   */
+  async getFeePayer(): Promise<string> {
+    try {
+      // FacilitatorClient has getFeePayer(network)
+      const feePayer = await this.handler.getFeePayer(this.network);
+      console.log(`   ✅ Fetched PayAI fee payer: ${feePayer}`);
+      return feePayer;
+    } catch (err: any) {
+      console.warn(`⚠️ Failed to fetch PayAI fee payer: ${err.message}`);
+      // Fallback to known address if fetch fails
+      return '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4';
+    }
+  }
+
   private async verifyViaHttp(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
     try {
       const axios = require('axios');
