@@ -121,16 +121,18 @@ export class PayAISdkFacilitator {
       }
 
       // CRITICAL: Requirements for PayAI verification
-      // STRICT adherence to PayAI Reference Docs Table 5.1.2
-      // Minimal payload to avoid schema validation errors (500)
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme, // 'exact'
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
         maxAmountRequired: amountVal,
+        // Asset must be a string (mint address) based on payment-handler.ts
         asset: typeof paymentRequirements.asset === 'object' 
           ? paymentRequirements.asset.address 
           : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        resource: paymentRequirements.resource || '',
+        description: paymentRequirements.description || 'Payment via x402',
+        extra: paymentRequirements.extra || {}
       };
       
       // Add outputSchema only if present
@@ -247,7 +249,7 @@ export class PayAISdkFacilitator {
         : (paymentRequirements.amount ? String(paymentRequirements.amount) : null);
 
       // CRITICAL: Requirements for PayAI settlement
-      // STRICT adherence to PayAI Reference Docs Table 5.1.2
+      // Aligning with PayAI payment-handler.ts source code
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
@@ -256,6 +258,9 @@ export class PayAISdkFacilitator {
         asset: typeof paymentRequirements.asset === 'object' 
           ? paymentRequirements.asset.address 
           : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        resource: paymentRequirements.resource || '',
+        description: paymentRequirements.description || 'Payment via x402',
+        extra: paymentRequirements.extra || {}
       };
 
       if (paymentRequirements.outputSchema) {
