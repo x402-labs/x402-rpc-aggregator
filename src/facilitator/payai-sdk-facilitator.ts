@@ -249,7 +249,7 @@ export class PayAISdkFacilitator {
         : (paymentRequirements.amount ? String(paymentRequirements.amount) : null);
 
       // CRITICAL: Requirements for PayAI settlement
-      // Aligning with PayAI payment-handler.ts source code
+      // Aligning with PayAI Reference Docs (Asset as STRING)
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,

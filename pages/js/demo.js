@@ -972,25 +972,15 @@ async function buildPayment(paymentDetails, chain) {
         needsAccountCreation = true;
       }
       
-      // Build USDC transfer transaction using VersionedTransaction (v0)
-      // CRITICAL: PayAI requires VersionedTransaction (v0), not legacy Transaction
-      // Reference: https://github.com/PayAINetwork/x402-solana/blob/main/src/client/transaction-builder.ts
-      // This matches PayAI's official transaction builder exactly
-      
-      const { VersionedTransaction, TransactionMessage } = window.solanaWeb3;
-      
-      // Build instructions array
-      const instructions = [];
+      // Build USDC transfer transaction using Legacy Transaction
+      // This is more compatible with some wallets and potentially the facilitator
+      const tx = new Transaction();
       
       // Instruction 0: Set compute unit limit (PayAI STRICT requirement: <= 7000)
-      instructions.push(
-        window.splToken.createComputeUnitLimitInstruction(7000)
-      );
+      tx.add(window.splToken.createComputeUnitLimitInstruction(7000));
       
       // Instruction 1: Set compute unit price (< 5 lamports as per PayAI spec)
-      instructions.push(
-        window.splToken.createComputeUnitPriceInstruction(1000000)  // 1 lamport = 1,000,000 microlamports
-      );
+      tx.add(window.splToken.createComputeUnitPriceInstruction(1000000));
       
       console.log('   ✅ Added ComputeBudget instructions (required by PayAI)');
       
@@ -1008,7 +998,7 @@ async function buildPayment(paymentDetails, chain) {
       }
       
       // Instruction 2: USDC TransferChecked
-      instructions.push(
+      tx.add(
         window.splToken.createTransferCheckedInstruction(
           fromATA,           // source
           USDC_MINT,         // mint
@@ -1043,23 +1033,15 @@ async function buildPayment(paymentDetails, chain) {
         );
       }
       
-      // Create v0 message with VersionedTransaction
-      // This matches PayAI's transaction-builder.ts exactly
-      const message = new TransactionMessage({
-        payerKey: new PublicKey(facilitatorFeePayer),
-        recentBlockhash: result.value.blockhash,
-        instructions: instructions
-      }).compileToV0Message();
-      
-      // Create VersionedTransaction
-      const tx = new VersionedTransaction(message);
+      tx.recentBlockhash = result.value.blockhash;
+      tx.feePayer = new PublicKey(facilitatorFeePayer);
       
       console.log('   Fee payer (PayAI facilitator):', facilitatorFeePayer);
       console.log('   User wallet:', wallet.publicKey.toBase58());
       console.log('   Transaction info before signing:');
-      console.log('     - Instructions:', tx.message.compiledInstructions.length);
-      console.log('     - Fee payer:', tx.message.staticAccountKeys[0].toBase58());
-      console.log('     - Blockhash:', tx.message.recentBlockhash.substring(0, 8) + '...');
+      console.log('     - Instructions:', tx.instructions.length);
+      console.log('     - Fee payer:', tx.feePayer.toBase58());
+      console.log('     - Blockhash:', tx.recentBlockhash.substring(0, 8) + '...');
       console.log('   Requesting signature from Phantom...');
         
       // Sign with user's wallet (partial signature)
@@ -1071,16 +1053,11 @@ async function buildPayment(paymentDetails, chain) {
         throw new Error('Transaction signing failed: no signatures in transaction');
       }
       
-      console.log('✅ Transaction has', signed.signatures.length, 'signature(s)');
-      
-      // For VersionedTransaction, we serialize directly
+      // Serialize Legacy Transaction (partial)
       let serialized;
       try {
-        serialized = Buffer.from(signed.serialize());
-        if (!serialized || serialized.length === 0) {
-          throw new Error('Transaction serialization returned empty or null');
-        }
-        console.log('✅ VersionedTransaction serialized successfully, size:', serialized.length, 'bytes');
+        serialized = signed.serialize({ requireAllSignatures: false });
+        console.log('✅ Legacy Transaction serialized successfully, size:', serialized.length, 'bytes');
       } catch (serErr) {
         console.error('❌ Serialization error:', serErr);
         throw new Error('Failed to serialize transaction: ' + serErr.message);
