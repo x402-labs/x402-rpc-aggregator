@@ -511,8 +511,9 @@ app.get('/chat', (req, res) => {
 });
 
 // ========================================
-// CHAT AGENT ENDPOINTS
+// CHAT AGENT ENDPOINTS (DISABLED)
 // ========================================
+/*
 import { ChatAgent } from './agent/chat-agent';
 
 let chatAgent: ChatAgent | null = null;
@@ -593,6 +594,7 @@ app.post('/api/confirm-payment', async (req: Request, res: Response) => {
     });
   }
 });
+*/
 
 // ========================================
 // DAYDREAMS AGENT ENDPOINT

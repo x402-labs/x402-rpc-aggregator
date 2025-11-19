@@ -90,7 +90,7 @@ export class PayAISdkFacilitator {
           } catch (versionedErr) {
             // Fall back to legacy Transaction
             try {
-              const tx = Transaction.from(txBytes);
+          const tx = Transaction.from(txBytes);
               payerKey = tx.feePayer;
             } catch (legacyErr) {
               console.warn(`   Could not deserialize as VersionedTransaction or legacy Transaction`);
@@ -99,7 +99,7 @@ export class PayAISdkFacilitator {
           
           if (payerKey) {
             payerPublicKey = payerKey.toBase58();
-            console.log(`   Extracted payer from transaction: ${payerPublicKey}`);
+          console.log(`   Extracted payer from transaction: ${payerPublicKey}`);
           }
         }
       } catch (err: any) {
@@ -163,7 +163,7 @@ export class PayAISdkFacilitator {
         network: paymentPayload.network,
         payload: paymentPayload.payload  // Contains the transaction
       };
-
+      
       // JSON stringify and BASE64 encode (FacilitatorClient expects this format)
       const paymentHeaderJson = JSON.stringify(x402Payload);
       const paymentHeaderBase64 = Buffer.from(paymentHeaderJson).toString('base64');
@@ -259,11 +259,11 @@ export class PayAISdkFacilitator {
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
         maxAmountRequired: amountVal,
-        asset: {
+          asset: {
           address: typeof paymentRequirements.asset === 'object' 
             ? paymentRequirements.asset.address 
             : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-        },
+          },
         resource: paymentRequirements.resource || '',
         description: paymentRequirements.description || 'Payment via x402',
         extra: paymentRequirements.extra || {}
