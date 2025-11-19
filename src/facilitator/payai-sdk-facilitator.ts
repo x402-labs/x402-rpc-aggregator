@@ -121,18 +121,16 @@ export class PayAISdkFacilitator {
       }
 
       // CRITICAL: Requirements for PayAI verification
-      // Reverting to asset as OBJECT (safer for SDK) and sending BOTH amount fields
+      // STRICT adherence to PayAI Reference Docs Table 5.1.2
+      // Minimal payload to avoid schema validation errors (500)
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme, // 'exact'
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
-        amount: amountVal, // Some validators check this
-        maxAmountRequired: amountVal, // Some validators check this
-        asset: {
-          address: typeof paymentRequirements.asset === 'object' 
-            ? paymentRequirements.asset.address 
-            : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-        }
+        maxAmountRequired: amountVal,
+        asset: typeof paymentRequirements.asset === 'object' 
+          ? paymentRequirements.asset.address 
+          : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
       };
       
       // Add outputSchema only if present
@@ -249,21 +247,15 @@ export class PayAISdkFacilitator {
         : (paymentRequirements.amount ? String(paymentRequirements.amount) : null);
 
       // CRITICAL: Requirements for PayAI settlement
-      // Reverting to asset as OBJECT
+      // STRICT adherence to PayAI Reference Docs Table 5.1.2
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
-        amount: amountVal,
         maxAmountRequired: amountVal,
-        asset: {
-          address: typeof paymentRequirements.asset === 'object' 
-            ? paymentRequirements.asset.address 
-            : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-        },
-        resource: paymentRequirements.resource || '',
-        description: paymentRequirements.description || 'Payment via x402',
-        extra: paymentRequirements.extra || {}
+        asset: typeof paymentRequirements.asset === 'object' 
+          ? paymentRequirements.asset.address 
+          : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
       };
 
       if (paymentRequirements.outputSchema) {
