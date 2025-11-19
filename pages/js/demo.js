@@ -993,7 +993,6 @@ async function buildPayment(paymentDetails, chain) {
       
       // CRITICAL: PayAI requires merchant's ATA to EXIST BEFORE payment
       // We CANNOT include CreateATA in the transaction
-      // Check and throw if it doesn't exist
       if (needsAccountCreation) {
         throw new Error(
           'Treasury USDC account does not exist yet!\\n\\n' +
