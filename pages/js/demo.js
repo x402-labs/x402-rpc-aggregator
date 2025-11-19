@@ -973,7 +973,6 @@ async function buildPayment(paymentDetails, chain) {
       }
       
       // Build USDC transfer transaction using VersionedTransaction (v0)
-      // CRITICAL: PayAI requires VersionedTransaction (v0)
       // Reference: https://github.com/PayAINetwork/x402-solana/blob/main/src/client/transaction-builder.ts
       const { VersionedTransaction, TransactionMessage } = window.solanaWeb3;
       
