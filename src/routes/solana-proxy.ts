@@ -72,6 +72,22 @@ export async function proxySolanaRPC(req: Request, res: Response) {
       }),
     });
 
+    // Check if response is successful JSON
+    const contentType = heliusResponse.headers.get('content-type');
+    if (!heliusResponse.ok || !contentType?.includes('application/json')) {
+      const text = await heliusResponse.text();
+      console.error(`❌ Solana proxy error (${heliusResponse.status}): ${text.substring(0, 200)}`);
+      
+      return res.status(heliusResponse.status).json({
+        jsonrpc: '2.0',
+        id,
+        error: {
+          code: -32603,
+          message: `Upstream RPC error: ${heliusResponse.statusText || 'Unknown error'}`
+        }
+      });
+    }
+
     const data = await heliusResponse.json();
     
     // Log usage without exposing API key

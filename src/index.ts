@@ -91,6 +91,27 @@ const facilitatorManager = createFacilitatorManager();
 // Facilitator selection is via request body: { facilitator: 'codenut' }
 const x402Middleware = createUnifiedX402Middleware(facilitatorManager, providerRegistry, router);
 
+// Initialize Daydreams Agent (if OpenAI key is available)
+let daydreamsAgent: any = null;
+if (process.env.OPENAI_API_KEY && process.env.SOLANA_PRIVATE_KEY) {
+  try {
+    const { DaydreamsRPCAgent } = require('./agent/daydreams-agent');
+    daydreamsAgent = new DaydreamsRPCAgent(
+      process.env.OPENAI_API_KEY,
+      process.env.SOLANA_PRIVATE_KEY,
+      process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
+      process.env.BASE_URL || 'http://localhost:3000'
+    );
+    daydreamsAgent.start().catch((err: any) => {
+      console.error('❌ Failed to start Daydreams agent:', err.message);
+    });
+    console.log('✅ Daydreams RPC Agent initialized');
+  } catch (err: any) {
+    console.warn('⚠️  Daydreams agent not available:', err.message);
+    console.warn('   Install: bun add @daydreamsai/core @ai-sdk/openai zod');
+  }
+}
+
 // Start health checks
 providerRegistry.startHealthChecks(60000); // Every 60 seconds
 
@@ -483,6 +504,129 @@ app.get('/demo', (req, res) => {
 
 app.get('/agent', (req, res) => {
   res.sendFile(path.join(__dirname, '../pages/agent.html'));
+});
+
+app.get('/chat', (req, res) => {
+  res.sendFile(path.join(__dirname, '../pages/chat.html'));
+});
+
+// ========================================
+// CHAT AGENT ENDPOINTS
+// ========================================
+import { ChatAgent } from './agent/chat-agent';
+
+let chatAgent: ChatAgent | null = null;
+
+// Chat message endpoint
+app.post('/api/chat', async (req: Request, res: Response) => {
+  try {
+    const { message, userId, walletAddress } = req.body;
+
+    if (!message || !userId) {
+      return res.status(400).json({ error: 'message and userId are required' });
+    }
+
+    // Initialize chat agent if needed
+    if (!chatAgent) {
+      console.log('🚀 Initializing ChatAgent...');
+      try {
+        chatAgent = new ChatAgent();
+        await chatAgent.start();
+        console.log('✅ ChatAgent initialized and started');
+      } catch (initError: any) {
+        console.error('❌ Failed to initialize ChatAgent:', initError);
+        return res.status(500).json({
+          success: false,
+          response: `Failed to initialize agent: ${initError.message}`,
+          error: initError.message,
+          paymentRequired: false,
+        });
+      }
+    }
+
+    console.log(`📨 Processing chat message from ${userId}: "${message}"`);
+    const startTime = Date.now();
+    
+    const result = await chatAgent.processMessage(
+      message,
+      userId,
+      `session-${Date.now()}`
+    );
+
+    const duration = Date.now() - startTime;
+    console.log(`✅ Chat message processed in ${duration}ms`);
+    res.json(result);
+  } catch (err: any) {
+    console.error('❌ Chat endpoint error:', err);
+    console.error('   Stack:', err.stack?.split('\n').slice(0, 5).join('\n'));
+    res.status(500).json({
+      success: false,
+      response: err.message || 'An error occurred while processing your message',
+      error: err.message,
+      paymentRequired: false,
+    });
+  }
+});
+
+// Confirm payment endpoint
+app.post('/api/confirm-payment', async (req: Request, res: Response) => {
+  try {
+    const { paymentId, userId, amount, signature } = req.body;
+
+    if (!paymentId || !userId || !amount) {
+      return res.status(400).json({ error: 'paymentId, userId, and amount are required' });
+    }
+
+    if (!chatAgent) {
+      return res.status(400).json({ error: 'Chat agent not initialized' });
+    }
+
+    const result = await chatAgent.confirmPayment(userId, paymentId, amount, signature);
+
+    res.json(result);
+  } catch (err: any) {
+    console.error('Payment confirmation error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Payment confirmation failed',
+      error: err.message,
+    });
+  }
+});
+
+// ========================================
+// DAYDREAMS AGENT ENDPOINT
+// ========================================
+app.post('/agent/execute', async (req: Request, res: Response) => {
+  try {
+    if (!daydreamsAgent) {
+      return res.status(503).json({
+        error: 'Daydreams agent not available',
+        message: 'Install Daydreams dependencies: bun add @daydreamsai/core @ai-sdk/openai zod',
+      });
+    }
+
+    const { task, sessionId = `session-${Date.now()}` } = req.body;
+
+    if (!task || typeof task !== 'string') {
+      return res.status(400).json({ error: 'task is required and must be a string' });
+    }
+
+    console.log(`🤖 Daydreams agent executing task: ${task.substring(0, 100)}...`);
+
+    const result = await daydreamsAgent.executeTask(task, sessionId);
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('❌ Daydreams agent error:', error);
+    res.status(500).json({
+      error: 'Agent execution failed',
+      message: error.message,
+    });
+  }
 });
 
 app.get('/api-reference', (req, res) => {

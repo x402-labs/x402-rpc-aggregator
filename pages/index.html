@@ -624,25 +624,55 @@
       fill: #0E4D81;
     }
     
-    @media (max-width: 768px) {
-      .hero h1 {
-        font-size: 2.5rem;
+    /* Contract Address */
+    .contract-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      font-size: 0.875rem;
+    }
+    
+    .contract-label {
+      color: #64748b;
+      font-weight: 500;
+    }
+    
+    .contract-address {
+      color: #0E4D81;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.5px;
+    }
+    
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 8px;
+      color: #6366f1;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .copy-btn:hover {
+      background: rgba(99, 102, 241, 0.2);
+    }
+    
+    @media (max-width: 640px) {
+      .contract-container {
+        flex-direction: column;
+        gap: 8px;
       }
-      
-      .hero .subtitle {
-        font-size: 1.125rem;
-      }
-      
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .footer-content {
-        grid-template-columns: 1fr;
-      }
-      
-      nav {
-        display: none;
+      .contract-address {
+        font-size: 0.8rem;
+        word-break: break-all;
       }
     }
   </style>
@@ -679,10 +709,10 @@
     </div>
     
     <!-- Contract Address with Copy Button -->
-    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; font-size: 0.875rem;">
-      <span style="color: #64748b; font-weight: 500;">CA:</span>
-      <code id="contract-address" style="color: #0E4D81; font-weight: 600; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">7X3JdDswsL4DS6db22jfL1gZsU8MyEj6WEbLsWM9pump</code>
-      <button id="copy-contract-btn" onclick="copyContractAddress()" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; color: #6366f1; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+    <div class="contract-container">
+      <span class="contract-label">CA:</span>
+      <code id="contract-address" class="contract-address">7X3JdDswsL4DS6db22jfL1gZsU8MyEj6WEbLsWM9pump</code>
+      <button id="copy-contract-btn" class="copy-btn" onclick="copyContractAddress()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>

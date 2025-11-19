@@ -63,7 +63,8 @@ export class CorbitsFacilitator {
   constructor(config: CorbitsFacilitatorConfig = {}) {
     this.baseUrl = config.facilitatorUrl || 'https://facilitator.corbits.dev';
     this.network = config.network || 'solana'; // Default to Solana
-    this.timeout = config.timeout || 20000; // 20 second timeout (settlement can take longer)
+    this.timeout = config.timeout || 60000; // 60 second timeout (settlement can take longer on mainnet)
+    console.log(`   Timeout: ${this.timeout}ms`);
 
     console.log(`✅ Corbits Facilitator initialized`);
     console.log(`   Base URL: ${this.baseUrl}`);

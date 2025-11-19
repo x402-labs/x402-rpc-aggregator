@@ -106,41 +106,40 @@ export class PayAISdkFacilitator {
         console.warn(`   Could not extract payer from transaction:`, err.message);
       }
 
-      // CRITICAL: Normalize requirements for PayAI facilitator
-      // Only include fields that PayAI SDK expects, avoid custom fields
+      // CRITICAL: Handle amount field based on scheme and what client sent
+      // PayAI 'exact' scheme likely requires 'amount' field specifically
+      const amountVal = paymentRequirements.maxAmountRequired 
+        ? String(paymentRequirements.maxAmountRequired)
+        : (paymentRequirements.amount ? String(paymentRequirements.amount) : null);
+
+      if (!amountVal) {
+        console.error(`   Missing maxAmountRequired or amount in requirements:`, paymentRequirements);
+        return {
+          valid: false,
+          error: 'Missing amount in payment requirements',
+        };
+      }
+
+      // CRITICAL: Requirements for PayAI verification
+      // Using asset as OBJECT based on SDK examples (Reference docs table might be simplified)
+      // Using maxAmountRequired as per docs
       const sdkRequirements: any = {
-        scheme: paymentRequirements.scheme,
+        scheme: paymentRequirements.scheme, // 'exact'
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
-        resource: paymentRequirements.resource || '',
-        description: paymentRequirements.description || 'Payment via x402',
-        extra: paymentRequirements.extra || {},
-        // CRITICAL: Normalize asset to OBJECT (facilitator expects { address: string })
-          asset: {
+        maxAmountRequired: amountVal,
+        asset: {
           address: typeof paymentRequirements.asset === 'object' 
             ? paymentRequirements.asset.address 
             : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
         },
+        // Optional fields
+        resource: paymentRequirements.resource || '',
+        description: paymentRequirements.description || 'Payment via x402',
+        extra: paymentRequirements.extra || {}
       };
       
-      // NOTE: Do NOT add mimeType or maxTimeoutSeconds - these aren't part of ExactSvmPayloadSchema
-      // Only include fields that are actually used by the facilitator
-
-      // CRITICAL: Handle amount field based on scheme and what client sent
-      if ('maxAmountRequired' in paymentRequirements) {
-        sdkRequirements.maxAmountRequired = String(paymentRequirements.maxAmountRequired);
-      } else if ('amount' in paymentRequirements) {
-        // Alias 'amount' to 'maxAmountRequired' for compatibility
-        sdkRequirements.maxAmountRequired = String(paymentRequirements.amount);
-      } else {
-        console.error(`   Missing maxAmountRequired or amount in requirements:`, paymentRequirements);
-        return {
-          valid: false,
-          error: 'Missing maxAmountRequired or amount in payment requirements',
-        };
-      }
-      
-      // Add outputSchema if present
+      // Add outputSchema only if present
       if (paymentRequirements.outputSchema) {
         sdkRequirements.outputSchema = paymentRequirements.outputSchema;
       }
@@ -248,29 +247,28 @@ export class PayAISdkFacilitator {
         };
       }
 
-      // CRITICAL: Use same normalization as verify (no mimeType or maxTimeoutSeconds)
+      // CRITICAL: Use same minimal structure as verify
+      const amountVal = paymentRequirements.maxAmountRequired 
+        ? String(paymentRequirements.maxAmountRequired)
+        : (paymentRequirements.amount ? String(paymentRequirements.amount) : null);
+
+      // CRITICAL: Requirements for PayAI settlement
+      // Using asset as OBJECT based on SDK examples
       const sdkRequirements: any = {
         scheme: paymentRequirements.scheme,
         network: paymentRequirements.network || this.network,
         payTo: paymentRequirements.payTo || this.treasuryAddress,
-        resource: paymentRequirements.resource || '',
-        description: paymentRequirements.description || 'Payment via x402',
-        extra: paymentRequirements.extra || {},
-        // Normalize asset to OBJECT
-          asset: {
+        maxAmountRequired: amountVal,
+        asset: {
           address: typeof paymentRequirements.asset === 'object' 
             ? paymentRequirements.asset.address 
             : paymentRequirements.asset || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-          },
+        },
+        resource: paymentRequirements.resource || '',
+        description: paymentRequirements.description || 'Payment via x402',
+        extra: paymentRequirements.extra || {}
       };
 
-      // Handle amount field
-      if ('maxAmountRequired' in paymentRequirements) {
-        sdkRequirements.maxAmountRequired = String(paymentRequirements.maxAmountRequired);
-      } else if ('amount' in paymentRequirements) {
-        sdkRequirements.maxAmountRequired = String(paymentRequirements.amount);
-      }
-      
       if (paymentRequirements.outputSchema) {
         sdkRequirements.outputSchema = paymentRequirements.outputSchema;
       }
