@@ -590,7 +590,7 @@ async function createX402Response(
     console.error(`   Stack:`, error.stack?.split('\n').slice(0, 3).join('\n'));
     // Continue with empty tokenAccountExtra
   }
-  
+
   const accepts: X402Accepts = {
     scheme: 'exact',
     network,
@@ -668,7 +668,7 @@ async function createX402Response(
        // Per PayAI transaction builder: https://github.com/PayAINetwork/x402-solana/blob/main/src/client/transaction-builder.ts
        // The transaction must have facilitator as feePayer before user signs
        ...(effectiveFacilitator === 'payai' && {
-         feePayer: '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4',
+         feePayer: await facilitatorManager.getPayAIFeePayer(),
        }),
        // CodeNut facilitator feePayer (from /supported endpoint)
        ...(effectiveFacilitator === 'codenut' && chain === 'solana' && {

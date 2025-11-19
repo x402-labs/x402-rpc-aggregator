@@ -282,6 +282,13 @@ export class PayAIFacilitator implements IFacilitator {
     return true; // PayAI is always available (network service)
   }
 
+  async getFeePayer(): Promise<string> {
+    if (this.sdkFacilitator) {
+      return this.sdkFacilitator.getFeePayer();
+    }
+    return '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4';
+  }
+
   async verifyPayment(paymentPayload: any, paymentRequirements: any): Promise<VerifyResult> {
     // Try SDK first if available
     if (this.sdkFacilitator) {
@@ -395,6 +402,11 @@ export class FacilitatorManager {
     }
 
     return this.payaiFacilitator;
+  }
+
+  async getPayAIFeePayer(): Promise<string> {
+    const payai = this.getOrCreatePayAIFacilitator();
+    return payai.getFeePayer();
   }
 
   private getOrCreateCorbitsFacilitator(): CorbitsFacilitatorWrapper {
