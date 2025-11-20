@@ -6,10 +6,19 @@
 
 import { Request, Response } from 'express';
 
-const HELIUS_RPC_URL = process.env.HELIUS_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const HELIUS_RPC_URL = process.env.HELIUS_RPC_URL;
+const QUICKNODE_RPC_URL = process.env.QUICKNODE_SOLANA_URL;
+const PUBLIC_RPC_URL = 'https://api.mainnet-beta.solana.com';
+
+// Prioritize paid providers, fall back to public
+const RPC_ENDPOINTS = [
+  HELIUS_RPC_URL,
+  QUICKNODE_RPC_URL,
+  PUBLIC_RPC_URL
+].filter(url => !!url) as string[];
 
 /**
- * Proxy Solana RPC calls to Helius
+ * Proxy Solana RPC calls to Helius (with fallback)
  * This keeps the API key secure on the server
  */
 export async function proxySolanaRPC(req: Request, res: Response) {
@@ -60,40 +69,57 @@ export async function proxySolanaRPC(req: Request, res: Response) {
       });
     }
 
-    // Forward request to Helius
-    const heliusResponse = await fetch(HELIUS_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id,
-        method,
-        params,
-      }),
-    });
+    // Try endpoints in order
+    let lastError: any = null;
+    let successResponse = null;
 
-    // Check if response is successful JSON
-    const contentType = heliusResponse.headers.get('content-type');
-    if (!heliusResponse.ok || !contentType?.includes('application/json')) {
-      const text = await heliusResponse.text();
-      console.error(`❌ Solana proxy error (${heliusResponse.status}): ${text.substring(0, 200)}`);
-      
-      return res.status(heliusResponse.status).json({
-        jsonrpc: '2.0',
-        id,
-        error: {
-          code: -32603,
-          message: `Upstream RPC error: ${heliusResponse.statusText || 'Unknown error'}`
+    for (const rpcUrl of RPC_ENDPOINTS) {
+      try {
+        const response = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id,
+            method,
+            params,
+          }),
+        });
+
+        // Check if response is successful JSON
+        const contentType = response.headers.get('content-type');
+        if (response.ok && contentType?.includes('application/json')) {
+          successResponse = await response.json();
+          // Log usage without exposing API key (mask URL)
+          const providerName = rpcUrl.includes('helius') ? 'Helius' : rpcUrl.includes('quicknode') ? 'QuickNode' : 'Public';
+          console.log(`📡 Solana proxy: ${method} → ${response.status} (${providerName})`);
+          break; // Success!
+        } else {
+          const text = await response.text();
+          console.warn(`⚠️ RPC failed (${rpcUrl.substring(0, 20)}...): ${response.status} - ${text.substring(0, 100)}`);
+          lastError = { status: response.status, text };
         }
-      });
+      } catch (err: any) {
+        console.warn(`⚠️ RPC connection error (${rpcUrl.substring(0, 20)}...): ${err.message}`);
+        lastError = { status: 500, text: err.message };
+      }
     }
 
-    const data = await heliusResponse.json();
-    
-    // Log usage without exposing API key
-    console.log(`📡 Solana proxy: ${method} → ${heliusResponse.status}`);
+    if (successResponse) {
+      return res.json(successResponse);
+    }
 
-    res.json(data);
+    // If all failed
+    console.error(`❌ All RPC endpoints failed for ${method}`);
+    return res.status(lastError?.status || 500).json({
+      jsonrpc: '2.0',
+      id,
+      error: {
+        code: -32603,
+        message: `Upstream RPC error: ${lastError?.text || 'Unknown error'}`
+      }
+    });
+
   } catch (error: any) {
     console.error('Solana proxy error:', error.message);
     res.status(500).json({
